@@ -22,6 +22,7 @@ export function useRoomSocket() {
 
     socket.on("room:state", handleRoomState);
     socket.on("server:error", handleServerError);
+    socket.connect();
     return () => {
       socket.off("room:state", handleRoomState);
       socket.off("server:error", handleServerError);

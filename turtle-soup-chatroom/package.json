@@ -22,6 +22,9 @@
     "tsx": "^4.20.0",
     "zod": "^3.25.0"
   },
+  "overrides": {
+    "browserslist": "4.28.4"
+  },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",

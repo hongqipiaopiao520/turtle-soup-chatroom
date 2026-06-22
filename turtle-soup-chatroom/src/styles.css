@@ -317,6 +317,54 @@ select {
   padding: 10px 12px;
 }
 
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: rgba(2, 6, 23, 0.72);
+  padding: 16px;
+}
+
+.name-dialog {
+  width: min(100%, 380px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #111827;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  padding: 18px;
+}
+
+.name-dialog h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+}
+
+.name-dialog label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.name-dialog input {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 12px;
+  outline: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 .room-shell {
   min-height: 100vh;
   display: grid;
