@@ -81,29 +81,36 @@ export async function askHost(input: AskHostInput): Promise<HostDecision> {
     };
   }
 
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: buildHostPrompt(input)
-    })
-  });
+  try {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: buildHostPrompt(input)
+      })
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return {
+        answerType: "partial",
+        answer: `汤仙人暂时走神了，请稍后重试。（${response.status}）`
+      };
+    }
+
+    const payload = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    return parseHostResponse(payload.choices?.[0]?.message?.content || "");
+  } catch {
     return {
       answerType: "partial",
-      answer: `汤仙人暂时走神了，请稍后重试。（${response.status}）`
+      answer: "汤仙人暂时走神了，请稍后重试。"
     };
   }
-
-  const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  return parseHostResponse(payload.choices?.[0]?.message?.content || "");
 }
