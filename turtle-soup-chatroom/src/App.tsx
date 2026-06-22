@@ -1,17 +1,42 @@
+import { useMemo, useState } from "react";
+import { HomePage } from "./components/HomePage";
+import { PuzzleDetail } from "./components/PuzzleDetail";
+import { seedPuzzles } from "./data/seedPuzzles";
+import type { Puzzle, RoomState } from "./shared/types";
+
+type View =
+  | { name: "home" }
+  | { name: "detail"; puzzle: Puzzle }
+  | { name: "room"; room: RoomState; playerId: string };
+
 export function App() {
+  const [view, setView] = useState<View>({ name: "home" });
+  const randomPuzzle = useMemo(
+    () => () => {
+      const puzzle = seedPuzzles[Math.floor(Math.random() * seedPuzzles.length)];
+      setView({ name: "detail", puzzle });
+    },
+    []
+  );
+
+  if (view.name === "detail") {
+    return (
+      <PuzzleDetail
+        puzzle={view.puzzle}
+        onBack={() => setView({ name: "home" })}
+        onStart={() => alert("房间功能将在下一任务接入")}
+      />
+    );
+  }
+
+  if (view.name === "room") {
+    return <div />;
+  }
+
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div>
-          <span className="eyebrow">AI HOSTED TURTLE SOUP</span>
-          <h1>出前一汤聊天室</h1>
-        </div>
-        <span className="status-pill">本地原型</span>
-      </header>
-      <section className="empty-state">
-        <h2>线上海龟汤聊天室 MVP</h2>
-        <p>项目骨架已就绪。下一步接入题库、房间和 AI 主持人。</p>
-      </section>
-    </main>
+    <HomePage
+      onOpenPuzzle={(puzzle) => setView({ name: "detail", puzzle })}
+      onRandomPuzzle={randomPuzzle}
+    />
   );
 }
