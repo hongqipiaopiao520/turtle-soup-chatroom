@@ -1,0 +1,80 @@
+:root {
+  color-scheme: dark;
+  --bg: #111827;
+  --panel: #1f2937;
+  --panel-2: #263241;
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #f8fafc;
+  --muted: #a7b0bf;
+  --blue: #3b82f6;
+  --green: #22c55e;
+  --orange: #f97316;
+  --red: #ef4444;
+  font-family: Inter, "Noto Sans SC", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+    var(--bg);
+  background-size: 24px 24px;
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+}
+
+.topbar h1 {
+  margin: 4px 0 0;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-pill {
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-radius: 999px;
+  color: #bbf7d0;
+  padding: 6px 10px;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.empty-state {
+  margin: 48px auto 0;
+  max-width: 680px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(31, 41, 55, 0.9);
+  padding: 24px;
+}
