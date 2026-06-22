@@ -1,0 +1,52 @@
+import { useEffect, useMemo, useState } from "react";
+import type { Socket } from "socket.io-client";
+import type { Puzzle, RoomState } from "../shared/types";
+import { createSocket } from "./socket";
+
+export function useRoomSocket() {
+  const socket = useMemo<Socket>(() => createSocket(), []);
+  const [room, setRoom] = useState<RoomState | null>(null);
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleRoomState = (nextRoom: RoomState) => {
+      setRoom(nextRoom);
+      setPlayerId((currentPlayerId) => {
+        if (currentPlayerId) return currentPlayerId;
+        const newestPlayer = nextRoom.players[nextRoom.players.length - 1];
+        return newestPlayer?.id ?? null;
+      });
+    };
+    const handleServerError = ({ message }: { message: string }) => setError(message);
+
+    socket.on("room:state", handleRoomState);
+    socket.on("server:error", handleServerError);
+    return () => {
+      socket.off("room:state", handleRoomState);
+      socket.off("server:error", handleServerError);
+      socket.disconnect();
+    };
+  }, [socket]);
+
+  return {
+    room,
+    playerId,
+    error,
+    createRoom(puzzle: Puzzle, playerName: string) {
+      socket.emit("room:create", { puzzleId: puzzle.id, playerName });
+    },
+    joinRoom(roomId: string, playerName: string) {
+      socket.emit("room:join", { roomId, playerName });
+    },
+    sendChat(body: string) {
+      if (room && playerId) socket.emit("chat:send", { roomId: room.id, playerId, body });
+    },
+    askHost(question: string, mode: "question" | "guess") {
+      if (room && playerId) socket.emit("host:ask", { roomId: room.id, playerId, question, mode });
+    },
+    pinAnswer(answerId: string) {
+      if (room) socket.emit("case:pin", { roomId: room.id, answerId });
+    }
+  };
+}
