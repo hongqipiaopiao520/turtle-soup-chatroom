@@ -1,7 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import type { Puzzle } from "../src/shared/types";
 import { askHost } from "./aiHost";
-import { savePersistedRooms } from "./roomPersistence";
 import {
   addChatMessage,
   addHostAnswer,
@@ -14,9 +13,11 @@ import {
   removePlayer
 } from "./roomStore";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
+import type { RoomRepository } from "./storage/roomRepository";
 
 interface SocketHandlerDependencies {
   puzzleRepository: PuzzleRepository;
+  roomRepository: RoomRepository;
 }
 
 function emitError(socket: Socket, error: unknown) {
@@ -25,8 +26,8 @@ function emitError(socket: Socket, error: unknown) {
   });
 }
 
-function persistRooms() {
-  savePersistedRooms(exportRoomsSnapshot());
+function persistRooms(roomRepository: RoomRepository) {
+  roomRepository.saveAll(exportRoomsSnapshot());
 }
 
 export function getPublishedPuzzleForRoom(puzzleRepository: PuzzleRepository, puzzleId: string): Puzzle {
@@ -45,7 +46,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
         const session = createRoom(puzzle, playerName);
         const { room } = session;
         socket.join(room.id);
-        persistRooms();
+        persistRooms(dependencies.roomRepository);
         socket.emit("room:session", session);
       } catch (error) {
         emitError(socket, error);
@@ -57,7 +58,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
         const session = joinRoom(roomId, playerName);
         const { room } = session;
         socket.join(room.id);
-        persistRooms();
+        persistRooms(dependencies.roomRepository);
         socket.emit("room:session", session);
         io.to(room.id).emit("room:state", room);
       } catch (error) {
@@ -80,7 +81,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
         addChatMessage(roomId, playerId, body);
         const room = getRoom(roomId);
         if (room) {
-          persistRooms();
+          persistRooms(dependencies.roomRepository);
           io.to(room.id).emit("room:state", room);
         }
       } catch (error) {
@@ -116,7 +117,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
 
         const updated = getRoom(roomId);
         if (updated) {
-          persistRooms();
+          persistRooms(dependencies.roomRepository);
           io.to(updated.id).emit("room:state", updated);
         }
       } catch (error) {
@@ -127,7 +128,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
     socket.on("case:pin", ({ roomId, answerId }) => {
       try {
         const room = pinAnswer(roomId, answerId);
-        persistRooms();
+        persistRooms(dependencies.roomRepository);
         io.to(room.id).emit("room:state", room);
       } catch (error) {
         emitError(socket, error);
@@ -137,8 +138,12 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
     socket.on("room:leave", ({ roomId, playerId }) => {
       try {
         const room = removePlayer(roomId, playerId);
-        persistRooms();
-        io.to(room.id).emit("room:state", room);
+        if (room.players.length === 0) {
+          dependencies.roomRepository.remove(roomId);
+        } else {
+          persistRooms(dependencies.roomRepository);
+          io.to(room.id).emit("room:state", room);
+        }
       } catch (error) {
         emitError(socket, error);
       }
