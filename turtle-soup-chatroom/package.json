@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
+    "better-sqlite3": "^12.11.1",
     "concurrently": "^9.2.0",
     "express": "^5.1.0",
     "lucide-react": "^0.468.0",
@@ -26,6 +27,7 @@
     "browserslist": "4.28.4"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
