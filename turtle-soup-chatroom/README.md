@@ -115,10 +115,62 @@ Markdown imports do not call the LLM. They reuse the existing `汤面` and `汤�
 ```bash
 npm install
 npm run build
-NODE_ENV=production DATABASE_URL=file:./data/app.sqlite ADMIN_TOKEN=replace_me PORT=8787 npm run server
+cp .env.example .env
+npm run start
 ```
 
-For production, put the SQLite file on a persistent volume and run the Node process with PM2, systemd, or your platform's process manager.
+For production, edit `.env` first:
+
+```bash
+NODE_ENV=production
+PORT=8787
+DATABASE_URL=file:./data/app.sqlite
+ADMIN_TOKEN=replace_me
+MIMO_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
+MIMO_API_KEY=replace_me
+MIMO_AGENT_MODEL=mimo-v2.5-pro
+MIMO_FAST_MODEL=mimo-v2-flash
+```
+
+### PM2 / BaoTa
+
+```bash
+npm install
+npm run build
+mkdir -p data logs
+pm2 start ecosystem.config.cjs
+pm2 save
+```
+
+Then point the BaoTa site root to:
+
+```text
+/www/wwwroot/turtle-soup-chatroom/turtle-soup-chatroom/dist
+```
+
+Add these Nginx locations in the BaoTa site config:
+
+```nginx
+location /api/ {
+    proxy_pass http://127.0.0.1:8787/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+
+location /socket.io/ {
+    proxy_pass http://127.0.0.1:8787/socket.io/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+}
+
+location / {
+    try_files $uri $uri/ /index.html;
+}
+```
+
+Keep `data/` on persistent disk and back up `data/app.sqlite` regularly.
 
 ## MVP Checks
 
