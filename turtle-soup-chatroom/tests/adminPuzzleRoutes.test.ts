@@ -3,11 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { seedPuzzles } from "../src/data/seedPuzzles";
-import { importTextDraft, isAdminRequestAuthorized, listAdminPuzzles, publishAdminPuzzle, rejectAdminPuzzle } from "../server/adminPuzzleRoutes";
+import { importTextDraft, importTextWithAi, isAdminRequestAuthorized, listAdminPuzzles, publishAdminPuzzle, rejectAdminPuzzle } from "../server/adminPuzzleRoutes";
 import { openDatabase } from "../server/storage/database";
 import { createPuzzleRepository } from "../server/storage/puzzleRepository";
 
 const tmpRoots: string[] = [];
+const originalEnv = { ...process.env };
+const originalFetch = globalThis.fetch;
 
 function makeRepository() {
   const root = join(tmpdir(), `turtle-admin-routes-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -18,6 +20,9 @@ function makeRepository() {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+  process.env = { ...originalEnv };
+  globalThis.fetch = originalFetch;
   for (const root of tmpRoots) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -50,6 +55,38 @@ describe("admin puzzle helpers", () => {
     expect(draft.rawText).toContain("向空气道谢");
     expect(draft.sourceUrl).toBe("https://example.test/source");
     expect(repository.listManaged("draft")).toHaveLength(1);
+    db.close();
+  });
+
+  it("imports text with AI structure when configured", async () => {
+    process.env.AI_BASE_URL = "https://example.test";
+    process.env.AI_API_KEY = "test-key";
+    process.env.AI_MODEL = "test-model";
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content: JSON.stringify({
+          title: "结构化题",
+          surface: "一个人听见铃声后大笑。",
+          truth: "铃声是约定好的安全信号。",
+          solutionPoints: ["铃声是信号", "事先有约定"],
+          hints: ["声音很关键"],
+          difficulty: "medium",
+          tags: ["悬疑"],
+          qualityScore: 88,
+          qualityIssues: [],
+          qualitySummary: "可以进入审核"
+        }) } }]
+      })
+    } as unknown as Response);
+    const { db, repository } = makeRepository();
+
+    const puzzle = await importTextWithAi(repository, { rawText: "原始题目" });
+
+    expect(puzzle.status).toBe("reviewing");
+    expect(puzzle.title).toBe("结构化题");
+    expect(puzzle.solutionPoints).toEqual(["铃声是信号", "事先有约定"]);
+    expect(repository.listManaged("reviewing")).toHaveLength(1);
     db.close();
   });
 
