@@ -24,6 +24,23 @@ export interface Puzzle {
   createdAt: string;
 }
 
+export type PuzzleStatus = "draft" | "reviewing" | "published" | "rejected";
+
+export interface ManagedPuzzle extends Puzzle {
+  status: PuzzleStatus;
+  rawText?: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
+  hints: string[];
+  estimatedMinutes: number;
+  qualityScore: number;
+  qualityIssues: string[];
+  qualitySummary: string;
+  reviewedAt?: string;
+  publishedAt?: string;
+  updatedAt: string;
+}
+
 export type PuzzleSort = "hot" | "latest" | "rating";
 
 export interface PuzzleFilters {
