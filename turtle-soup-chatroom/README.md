@@ -93,6 +93,23 @@ PUZZLE_SEARCH_ENDPOINT=https://search.example.com/api npm run collect:puzzles --
 
 The script does not publish automatically. It imports candidates through `/api/admin/puzzles/import-text`, then the admin page handles editing and publishing.
 
+## Importing Markdown Puzzle Tables
+
+For a local Markdown table with columns `# / 标题 / 汤面 / 汤底 / 来源`, import directly into the review queue:
+
+```bash
+npm run import:puzzles-md -- --file /Users/levi/海龟汤去重总表.md --limit 10
+```
+
+Useful options:
+
+```bash
+npm run import:puzzles-md -- --file /Users/levi/海龟汤去重总表.md --source 许二木 --limit 20
+npm run import:puzzles-md -- --file /Users/levi/海龟汤去重总表.md --status draft
+```
+
+Markdown imports do not call the LLM. They reuse the existing `汤面` and `汤底` fields, generate lightweight review metadata, and default to `reviewing`.
+
 ## Single-Server Deploy
 
 ```bash

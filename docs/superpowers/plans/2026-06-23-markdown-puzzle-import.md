@@ -27,11 +27,11 @@
 
 **Steps:**
 
-- [ ] Add failing tests for table parsing, title cleanup, source link parsing, and `ManagedPuzzle` conversion.
-- [ ] Run `npm run test -- tests/importPuzzlesMd.test.ts`; expect failure because the script is missing.
-- [ ] Implement parser and conversion helpers.
-- [ ] Run `npm run test -- tests/importPuzzlesMd.test.ts`; expect pass.
-- [ ] Commit: `feat: parse markdown puzzle table`.
+- [x] Add failing tests for table parsing, title cleanup, source link parsing, and `ManagedPuzzle` conversion.
+- [x] Run `npm run test -- tests/importPuzzlesMd.test.ts`; expect failure because the script is missing.
+- [x] Implement parser and conversion helpers.
+- [x] Run `npm run test -- tests/importPuzzlesMd.test.ts`; expect pass.
+- [x] Commit: `feat: parse markdown puzzle table`.
 
 ### Task 2: SQLite Import CLI
 
@@ -43,12 +43,12 @@
 
 **Steps:**
 
-- [ ] Add failing test that imports two parsed rows into a temporary SQLite database and returns `{ imported: 2, skipped: 0 }`.
-- [ ] Run `npm run test -- tests/importPuzzlesMd.test.ts`; expect failure because database import is missing.
-- [ ] Implement `importMarkdownPuzzles(options)`.
-- [ ] Add `import:puzzles-md` npm script.
-- [ ] Run `npm run test -- tests/importPuzzlesMd.test.ts`; expect pass.
-- [ ] Commit: `feat: import markdown puzzles into review queue`.
+- [x] Add failing test that imports two parsed rows into a temporary SQLite database and returns `{ imported: 2, skipped: 0 }`.
+- [x] Run `npm run test -- tests/importPuzzlesMd.test.ts`; expect failure because database import is missing.
+- [x] Implement `importMarkdownPuzzles(options)`.
+- [x] Add `import:puzzles-md` npm script.
+- [x] Run `npm run test -- tests/importPuzzlesMd.test.ts`; expect pass.
+- [x] Commit: `feat: import markdown puzzles into review queue`.
 
 ### Task 3: Real Import And Verification
 
@@ -58,11 +58,17 @@
 
 **Steps:**
 
-- [ ] Run `npm run import:puzzles-md -- --file /Users/levi/海龟汤去重总表.md --limit 10`.
-- [ ] Verify `/api/admin/puzzles?status=reviewing` includes the imported rows.
-- [ ] Run `npm run test`.
-- [ ] Run `npm run build`.
-- [ ] Document usage in README.
-- [ ] Mark verification results in this plan.
+- [x] Run `npm run import:puzzles-md -- --file /Users/levi/海龟汤去重总表.md --limit 10`.
+- [x] Verify `/api/admin/puzzles?status=reviewing` includes the imported rows.
+- [x] Run `npm run test`.
+- [x] Run `npm run build`.
+- [x] Document usage in README.
+- [x] Mark verification results in this plan.
 - [ ] Commit: `docs: document markdown puzzle import`.
 
+## Verification Results
+
+- Real import: `Imported: 10`, `Skipped: 0`.
+- Review queue check: imported titles include `妹妹的房间`, `宿舍`, `秘密`, `圣诞礼物`, `保姆`, `信`, `兄妹`, `笔仙`, `跳楼的女人`, `歌声`; all status `reviewing`.
+- `npm run test`: 18 files passed, 66 tests passed.
+- `npm run build`: `tsc --noEmit && vite build` passed.
