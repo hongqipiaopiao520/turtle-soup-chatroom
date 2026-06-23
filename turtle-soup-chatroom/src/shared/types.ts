@@ -77,3 +77,8 @@ export interface RoomState {
   questionsUsed: number;
   createdAt: string;
 }
+
+export interface RoomSession {
+  room: RoomState;
+  playerId: string;
+}

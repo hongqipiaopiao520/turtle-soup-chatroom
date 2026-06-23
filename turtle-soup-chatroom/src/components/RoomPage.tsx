@@ -1,4 +1,5 @@
 import { ArrowLeft, Link } from "lucide-react";
+import { useState } from "react";
 import type { RoomState } from "../shared/types";
 import { HostPanel } from "./HostPanel";
 import { SidePanel } from "./SidePanel";
@@ -19,6 +20,17 @@ export function RoomPage({
   onSendChat: (body: string) => void;
 }) {
   const inviteUrl = `${window.location.origin}?room=${room.id}`;
+  const [copied, setCopied] = useState(false);
+
+  async function copyInvite() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      window.prompt("复制邀请链接", inviteUrl);
+    }
+  }
 
   return (
     <main className="room-shell">
@@ -30,8 +42,8 @@ export function RoomPage({
           <h1>私人房间</h1>
           <span className="status-pill">已连接</span>
         </div>
-        <button className="primary-button" onClick={() => navigator.clipboard.writeText(inviteUrl)}>
-          <Link size={16} /> 邀请好友
+        <button className="primary-button" onClick={copyInvite}>
+          <Link size={16} /> {copied ? "已复制" : "邀请好友"}
         </button>
       </header>
       <section className="room-grid">

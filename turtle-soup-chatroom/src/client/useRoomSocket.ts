@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Socket } from "socket.io-client";
-import type { Puzzle, RoomState } from "../shared/types";
+import type { Puzzle, RoomSession, RoomState } from "../shared/types";
 import { createSocket } from "./socket";
 
 export function useRoomSocket() {
@@ -10,20 +10,22 @@ export function useRoomSocket() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const handleRoomSession = (session: RoomSession) => {
+      setRoom(session.room);
+      setPlayerId(session.playerId);
+      setError(null);
+    };
     const handleRoomState = (nextRoom: RoomState) => {
       setRoom(nextRoom);
-      setPlayerId((currentPlayerId) => {
-        if (currentPlayerId) return currentPlayerId;
-        const newestPlayer = nextRoom.players[nextRoom.players.length - 1];
-        return newestPlayer?.id ?? null;
-      });
     };
     const handleServerError = ({ message }: { message: string }) => setError(message);
 
+    socket.on("room:session", handleRoomSession);
     socket.on("room:state", handleRoomState);
     socket.on("server:error", handleServerError);
     socket.connect();
     return () => {
+      socket.off("room:session", handleRoomSession);
       socket.off("room:state", handleRoomState);
       socket.off("server:error", handleServerError);
       socket.disconnect();
@@ -39,6 +41,9 @@ export function useRoomSocket() {
     },
     joinRoom(roomId: string, playerName: string) {
       socket.emit("room:join", { roomId, playerName });
+    },
+    rejoinRoom(roomId: string, playerId: string) {
+      socket.emit("room:rejoin", { roomId, playerId });
     },
     sendChat(body: string) {
       if (room && playerId) socket.emit("chat:send", { roomId: room.id, playerId, body });

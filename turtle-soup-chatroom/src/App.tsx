@@ -15,6 +15,29 @@ type NameRequest =
   | { kind: "create"; puzzle: Puzzle }
   | { kind: "join"; roomId: string };
 
+function roomSessionKey(roomId: string) {
+  return `turtle-room-session:${roomId}`;
+}
+
+function readStoredPlayerId(roomId: string) {
+  try {
+    const raw = window.localStorage.getItem(roomSessionKey(roomId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { roomId?: string; playerId?: string };
+    return parsed.roomId === roomId && parsed.playerId ? parsed.playerId : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeRoomSession(roomId: string, playerId: string) {
+  window.localStorage.setItem(roomSessionKey(roomId), JSON.stringify({ roomId, playerId }));
+}
+
+function clearRoomSession(roomId: string) {
+  window.localStorage.removeItem(roomSessionKey(roomId));
+}
+
 export function App() {
   const [view, setView] = useState<View>({ name: "home" });
   const [pendingPuzzle, setPendingPuzzle] = useState<Puzzle | null>(null);
@@ -25,17 +48,40 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     const roomId = params.get("room");
     if (roomId) {
-      setNameRequest({ kind: "join", roomId });
+      const storedPlayerId = readStoredPlayerId(roomId);
+      if (storedPlayerId) {
+        roomSocket.rejoinRoom(roomId, storedPlayerId);
+        setView({ name: "room" });
+      } else {
+        setNameRequest({ kind: "join", roomId });
+      }
     }
   }, []);
 
   useEffect(() => {
-    if (roomSocket.room && pendingPuzzle) {
+    if (roomSocket.room && roomSocket.playerId) {
+      storeRoomSession(roomSocket.room.id, roomSocket.playerId);
+    }
+    if (roomSocket.room && roomSocket.playerId && pendingPuzzle) {
       window.history.replaceState(null, "", `?room=${roomSocket.room.id}`);
       setPendingPuzzle(null);
       setView({ name: "room" });
     }
-  }, [roomSocket.room, pendingPuzzle]);
+  }, [roomSocket.room, roomSocket.playerId, pendingPuzzle]);
+
+  useEffect(() => {
+    if (!roomSocket.error) return;
+    const roomId = new URLSearchParams(window.location.search).get("room");
+    if (roomId) {
+      clearRoomSession(roomId);
+      if (roomSocket.error.includes("玩家不在房间内")) {
+        setNameRequest({ kind: "join", roomId });
+      }
+      if (roomSocket.error.includes("房间不存在")) {
+        setView({ name: "home" });
+      }
+    }
+  }, [roomSocket.error]);
 
   const randomPuzzle = useMemo(
     () => () => {

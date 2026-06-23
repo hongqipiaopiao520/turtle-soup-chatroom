@@ -4,6 +4,7 @@ import type {
   HostAnswer,
   Player,
   Puzzle,
+  RoomSession,
   RoomState
 } from "../src/shared/types";
 
@@ -45,7 +46,7 @@ export function getRoom(roomId: string) {
   return rooms.get(roomId);
 }
 
-export function createRoom(puzzle: Puzzle, hostName: string): RoomState {
+export function createRoom(puzzle: Puzzle, hostName: string): RoomSession {
   const host: Player = {
     id: id("player"),
     name: hostName.trim() || "访客",
@@ -67,10 +68,10 @@ export function createRoom(puzzle: Puzzle, hostName: string): RoomState {
   };
 
   rooms.set(room.id, room);
-  return room;
+  return { room, playerId: host.id };
 }
 
-export function joinRoom(roomId: string, playerName: string): RoomState {
+export function joinRoom(roomId: string, playerName: string): RoomSession {
   const room = requireRoom(roomId);
   if (room.players.length >= 10) {
     throw new Error("房间已满");
@@ -84,7 +85,13 @@ export function joinRoom(roomId: string, playerName: string): RoomState {
   };
 
   room.players.push(player);
-  return room;
+  return { room, playerId: player.id };
+}
+
+export function rejoinRoom(roomId: string, playerId: string): RoomSession {
+  const room = requireRoom(roomId);
+  requirePlayer(room, playerId);
+  return { room, playerId };
 }
 
 export function removePlayer(roomId: string, playerId: string): RoomState {

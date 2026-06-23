@@ -8,6 +8,7 @@ import {
   getRoom,
   joinRoom,
   pinAnswer,
+  rejoinRoom,
   removePlayer
 } from "./roomStore";
 
@@ -23,9 +24,10 @@ export function registerSocketHandlers(io: Server) {
       try {
         const puzzle = seedPuzzles.find((item) => item.id === puzzleId);
         if (!puzzle) throw new Error("题目不存在");
-        const room = createRoom(puzzle, playerName);
+        const session = createRoom(puzzle, playerName);
+        const { room } = session;
         socket.join(room.id);
-        socket.emit("room:state", room);
+        socket.emit("room:session", session);
       } catch (error) {
         emitError(socket, error);
       }
@@ -33,9 +35,21 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on("room:join", ({ roomId, playerName }) => {
       try {
-        const room = joinRoom(roomId, playerName);
+        const session = joinRoom(roomId, playerName);
+        const { room } = session;
         socket.join(room.id);
+        socket.emit("room:session", session);
         io.to(room.id).emit("room:state", room);
+      } catch (error) {
+        emitError(socket, error);
+      }
+    });
+
+    socket.on("room:rejoin", ({ roomId, playerId }) => {
+      try {
+        const session = rejoinRoom(roomId, playerId);
+        socket.join(session.room.id);
+        socket.emit("room:session", session);
       } catch (error) {
         emitError(socket, error);
       }
