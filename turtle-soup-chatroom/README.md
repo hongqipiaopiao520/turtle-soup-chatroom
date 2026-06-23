@@ -54,6 +54,45 @@ npm run backup:sqlite
 
 Backups are written to `data/backups/`.
 
+## Admin Puzzle Workflow
+
+Open `http://localhost:5173/admin` to use the puzzle review workbench. In development, the admin API allows a missing token. In production, set `ADMIN_TOKEN` and enter the same value in the page header.
+
+The workbench supports:
+
+- paste raw puzzle text and import it through the configured LLM structuring flow
+- review draft, reviewing, published, and rejected puzzles
+- edit title, surface, truth, solution points, hints, tags, difficulty, and quality notes
+- save changes, publish a puzzle, or reject it
+
+Only published puzzles appear on the public homepage.
+
+## Collecting Candidate Puzzles
+
+Use the collection script to fetch candidate puzzle text into the admin review queue:
+
+```bash
+npm run collect:puzzles -- --url https://example.com/puzzle --admin-token replace_me
+```
+
+For keyword search, provide a search endpoint that returns JSON in this shape:
+
+```json
+{
+  "results": [
+    { "title": "候选题标题", "url": "https://example.com/puzzle" }
+  ]
+}
+```
+
+Then run:
+
+```bash
+PUZZLE_SEARCH_ENDPOINT=https://search.example.com/api npm run collect:puzzles -- --query 海龟汤 --admin-token replace_me
+```
+
+The script does not publish automatically. It imports candidates through `/api/admin/puzzles/import-text`, then the admin page handles editing and publishing.
+
 ## Single-Server Deploy
 
 ```bash

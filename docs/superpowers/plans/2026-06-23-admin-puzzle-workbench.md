@@ -51,7 +51,7 @@
 
 **Steps:**
 
-- [ ] Add a failing test to `tests/adminPuzzleRoutes.test.ts`:
+- [x] Add a failing test to `tests/adminPuzzleRoutes.test.ts`:
 
 ```ts
 it("updates editable puzzle fields without changing status", () => {
@@ -83,12 +83,12 @@ it("updates editable puzzle fields without changing status", () => {
 });
 ```
 
-- [ ] Run `npm run test -- tests/adminPuzzleRoutes.test.ts`; expect failure because `updateAdminPuzzle` is missing.
-- [ ] Add `ManagedPuzzleUpdate` type and `updateManaged` to `PuzzleRepository`.
-- [ ] Implement `updateAdminPuzzle` with Zod validation in `server/adminPuzzleRoutes.ts`.
-- [ ] Add `PUT /api/admin/puzzles/:id` route.
-- [ ] Run `npm run test -- tests/adminPuzzleRoutes.test.ts`; expect pass.
-- [ ] Commit: `feat: add admin puzzle update api`.
+- [x] Run `npm run test -- tests/adminPuzzleRoutes.test.ts`; expect failure because `updateAdminPuzzle` is missing.
+- [x] Add `ManagedPuzzleUpdate` type and `updateManaged` to `PuzzleRepository`.
+- [x] Implement `updateAdminPuzzle` with Zod validation in `server/adminPuzzleRoutes.ts`.
+- [x] Add `PUT /api/admin/puzzles/:id` route.
+- [x] Run `npm run test -- tests/adminPuzzleRoutes.test.ts`; expect pass.
+- [x] Commit: `feat: add admin puzzle update api`.
 
 ### Task 2: Add Admin Client
 
@@ -105,11 +105,11 @@ it("updates editable puzzle fields without changing status", () => {
 
 **Steps:**
 
-- [ ] Add failing client tests for authenticated list, import, update, publish, and reject.
-- [ ] Run `npm run test -- tests/adminPuzzlesClient.test.ts`; expect failure because file is missing.
-- [ ] Implement `src/client/adminPuzzles.ts` with a small `adminFetch` helper.
-- [ ] Run `npm run test -- tests/adminPuzzlesClient.test.ts`; expect pass.
-- [ ] Commit: `feat: add admin puzzle client`.
+- [x] Add failing client tests for authenticated list, import, update, publish, and reject.
+- [x] Run `npm run test -- tests/adminPuzzlesClient.test.ts`; expect failure because file is missing.
+- [x] Implement `src/client/adminPuzzles.ts` with a small `adminFetch` helper.
+- [x] Run `npm run test -- tests/adminPuzzlesClient.test.ts`; expect pass.
+- [x] Commit: `feat: add admin puzzle client`.
 
 ### Task 3: Add Admin Workbench UI
 
@@ -125,14 +125,14 @@ it("updates editable puzzle fields without changing status", () => {
 
 **Steps:**
 
-- [ ] Add failing server-render tests that `AdminPage` renders "题库审核台", "粘贴原文导入", "保存修改", "发布", and selected puzzle fields.
-- [ ] Run `npm run test -- tests/adminPageUi.test.tsx`; expect failure because `AdminPage` is missing.
-- [ ] Implement `AdminPage` with status filter, import form, list, editor, and actions.
-- [ ] Route `window.location.pathname === "/admin"` to `AdminPage` in `App`.
-- [ ] Add admin CSS with compact two-column workbench layout and responsive single-column fallback.
-- [ ] Run `npm run test -- tests/adminPageUi.test.tsx`; expect pass.
-- [ ] Run `npm run build`; expect pass.
-- [ ] Commit: `feat: add admin puzzle workbench`.
+- [x] Add failing server-render tests that `AdminPage` renders "题库审核台", "粘贴原文导入", "保存修改", "发布", and selected puzzle fields.
+- [x] Run `npm run test -- tests/adminPageUi.test.tsx`; expect failure because `AdminPage` is missing.
+- [x] Implement `AdminPage` with status filter, import form, list, editor, and actions.
+- [x] Route `window.location.pathname === "/admin"` to `AdminPage` in `App`.
+- [x] Add admin CSS with compact two-column workbench layout and responsive single-column fallback.
+- [x] Run `npm run test -- tests/adminPageUi.test.tsx`; expect pass.
+- [x] Run `npm run build`; expect pass.
+- [x] Commit: `feat: add admin puzzle workbench`.
 
 ### Task 4: Add Collection Script MVP
 
@@ -150,13 +150,13 @@ it("updates editable puzzle fields without changing status", () => {
 
 **Steps:**
 
-- [ ] Add failing tests for HTML stripping, candidate extraction, and posting imports.
-- [ ] Run `npm run test -- tests/collectPuzzles.test.ts`; expect failure because script is missing.
-- [ ] Implement direct URL collection and import posting.
-- [ ] Add optional `--query` support through `PUZZLE_SEARCH_ENDPOINT` that returns JSON `{ results: [{ title, url }] }`.
-- [ ] Add `collect:puzzles` script to `package.json`.
-- [ ] Run `npm run test -- tests/collectPuzzles.test.ts`; expect pass.
-- [ ] Commit: `feat: add puzzle collection script`.
+- [x] Add failing tests for HTML stripping, candidate extraction, and posting imports.
+- [x] Run `npm run test -- tests/collectPuzzles.test.ts`; expect failure because script is missing.
+- [x] Implement direct URL collection and import posting.
+- [x] Add optional `--query` support through `PUZZLE_SEARCH_ENDPOINT` that returns JSON `{ results: [{ title, url }] }`.
+- [x] Add `collect:puzzles` script to `package.json`.
+- [x] Run `npm run test -- tests/collectPuzzles.test.ts`; expect pass.
+- [x] Commit: `feat: add puzzle collection script`.
 
 ### Task 5: Documentation And Verification
 
@@ -166,10 +166,16 @@ it("updates editable puzzle fields without changing status", () => {
 
 **Steps:**
 
-- [ ] Document `/admin`, `ADMIN_TOKEN`, and `npm run collect:puzzles` usage.
-- [ ] Run `npm run test`.
-- [ ] Run `npm run build`.
-- [ ] Browser verify `/admin`: import raw text, edit, save, publish, refresh `/`.
-- [ ] Mark this checklist with the verification results.
+- [x] Document `/admin`, `ADMIN_TOKEN`, and `npm run collect:puzzles` usage.
+- [x] Run `npm run test`.
+- [x] Run `npm run build`.
+- [x] Browser verify `/admin`: import raw text, edit, save, publish, refresh `/`. (Browser text input was blocked by the virtual clipboard layer, so import/save/publish were executed through the same local admin API and verified in `/admin` plus `/`.)
+- [x] Mark this checklist with the verification results.
 - [ ] Commit: `docs: document admin puzzle workflow`.
 
+## Verification Results
+
+- `npm run test`: 17 files passed, 62 tests passed.
+- `npm run build`: `tsc --noEmit && vite build` passed.
+- `/admin` browser check: workbench rendered, published test puzzle appeared, no console errors.
+- `/` browser check: published test puzzle appeared publicly, `truth` text did not appear on the homepage, no console errors.
