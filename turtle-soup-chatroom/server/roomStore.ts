@@ -133,6 +133,9 @@ export function addHostAnswer(
   answer: Omit<HostAnswer, "id" | "createdAt" | "pinned">
 ): HostAnswer {
   const room = requireRoom(roomId);
+  if (room.status === "solved") {
+    throw new Error("本局已结束");
+  }
   if (room.questionsUsed >= room.questionLimit && answer.answerType !== "solved") {
     throw new Error("提问次数已用完");
   }
@@ -159,6 +162,11 @@ export function pinAnswer(roomId: string, answerId: string): RoomState {
   const answer = room.hostLog.find((item) => item.id === answerId);
   if (!answer) {
     throw new Error("问答不存在");
+  }
+
+  if (answer.pinned || room.caseNotes.some((note) => note.sourceAnswerId === answerId)) {
+    answer.pinned = true;
+    return room;
   }
 
   answer.pinned = true;

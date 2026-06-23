@@ -65,6 +65,90 @@ describe("roomStore", () => {
     expect(getRoom(room.id)?.hostLog[0].pinned).toBe(true);
   });
 
+  it("tracks ordinary questions but not final guesses", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主");
+
+    addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "女孩真的消失了吗？",
+      answerType: "no",
+      answer: "不是。"
+    });
+    addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "最终推理：这是告别仪式。",
+      answerType: "unsolved",
+      answer: "还差一点。"
+    });
+
+    expect(getRoom(room.id)?.questionsUsed).toBe(1);
+  });
+
+  it("marks solved final guesses and prevents more host answers", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主");
+
+    addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "最终推理：她在参加告别仪式。",
+      answerType: "solved",
+      answer: "完全正确。"
+    });
+
+    expect(getRoom(room.id)?.status).toBe("solved");
+    expect(getRoom(room.id)?.questionsUsed).toBe(0);
+    expect(() =>
+      addHostAnswer(room.id, {
+        playerId,
+        playerName: "房主",
+        question: "还能继续问吗？",
+        answerType: "yes",
+        answer: "是。"
+      })
+    ).toThrow("本局已结束");
+  });
+
+  it("rejects ordinary questions after the question limit", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主");
+    room.questionLimit = 1;
+
+    addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "第一问",
+      answerType: "yes",
+      answer: "是。"
+    });
+
+    expect(() =>
+      addHostAnswer(room.id, {
+        playerId,
+        playerName: "房主",
+        question: "第二问",
+        answerType: "no",
+        answer: "不是。"
+      })
+    ).toThrow("提问次数已用完");
+  });
+
+  it("pins each host answer only once", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主");
+    const answer = addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "女孩真的消失了吗？",
+      answerType: "no",
+      answer: "不是。"
+    });
+
+    pinAnswer(room.id, answer.id);
+    const updated = pinAnswer(room.id, answer.id);
+
+    expect(updated.caseNotes).toHaveLength(1);
+  });
+
   it("exports and imports room snapshots for persistence", () => {
     const { room, playerId } = createRoom(seedPuzzles[1], "房主");
     addChatMessage(room.id, playerId, "这条消息应该被保存");

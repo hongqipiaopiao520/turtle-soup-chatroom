@@ -70,6 +70,12 @@ select {
   background: rgba(34, 197, 94, 0.1);
 }
 
+.room-status-solved {
+  border-color: rgba(249, 115, 22, 0.5);
+  color: #fed7aa;
+  background: rgba(249, 115, 22, 0.12);
+}
+
 .empty-state {
   margin: 48px auto 0;
   max-width: 680px;
@@ -114,6 +120,12 @@ select {
 
 .ghost-button {
   background: rgba(255, 255, 255, 0.04);
+}
+
+.primary-button:disabled,
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .toolbar {
@@ -497,6 +509,22 @@ select {
   min-height: 44px;
   max-height: 110px;
   resize: vertical;
+}
+
+.ask-box textarea:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.flow-hint {
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  border-radius: 8px;
+  background: rgba(249, 115, 22, 0.08);
+  color: #fed7aa;
+  line-height: 1.5;
+  margin: 10px 0 0;
+  padding: 8px 10px;
 }
 
 .side-panel {

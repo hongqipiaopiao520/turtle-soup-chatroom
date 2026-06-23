@@ -13,10 +13,14 @@ export function HostPanel({
 }) {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"question" | "guess">("question");
+  const remainingQuestions = Math.max(room.questionLimit - room.questionsUsed, 0);
+  const isSolved = room.status === "solved";
+  const isQuestionLimitReached = remainingQuestions === 0;
+  const isDisabled = isSolved || (mode === "question" && isQuestionLimitReached);
 
   function submit() {
     const trimmed = question.trim();
-    if (!trimmed) return;
+    if (!trimmed || isDisabled) return;
     onAsk(trimmed, mode);
     setQuestion("");
   }
@@ -26,7 +30,7 @@ export function HostPanel({
       <div className="panel-title">
         <h2>主持人问答</h2>
         <span>
-          {room.questionsUsed}/{room.questionLimit}
+          剩余 {remainingQuestions} 问
         </span>
       </div>
       <div className="host-log">
@@ -46,6 +50,10 @@ export function HostPanel({
           ))
         )}
       </div>
+      {isSolved && <p className="flow-hint">本局已解出，主持人问答已结束。</p>}
+      {!isSolved && isQuestionLimitReached && mode === "question" && (
+        <p className="flow-hint">普通提问次数已用完，可以提交最终推理。</p>
+      )}
       <div className="ask-box">
         <select value={mode} onChange={(event) => setMode(event.target.value as "question" | "guess")}>
           <option value="question">提问</option>
@@ -55,9 +63,10 @@ export function HostPanel({
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
           maxLength={256}
+          disabled={isDisabled}
           placeholder={mode === "question" ? "请提出可以用是/不是/无关回答的问题..." : "提交你的完整推理..."}
         />
-        <button className="primary-button" onClick={submit}>
+        <button className="primary-button" onClick={submit} disabled={isDisabled}>
           <Send size={16} /> 发送
         </button>
       </div>

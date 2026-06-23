@@ -21,6 +21,7 @@ export function RoomPage({
 }) {
   const inviteUrl = `${window.location.origin}?room=${room.id}`;
   const [copied, setCopied] = useState(false);
+  const statusLabel = room.status === "solved" ? "已解出" : "进行中";
 
   async function copyInvite() {
     try {
@@ -40,7 +41,7 @@ export function RoomPage({
         </button>
         <div>
           <h1>私人房间</h1>
-          <span className="status-pill">已连接</span>
+          <span className={`status-pill room-status-${room.status}`}>{statusLabel}</span>
         </div>
         <button className="primary-button" onClick={copyInvite}>
           <Link size={16} /> {copied ? "已复制" : "邀请好友"}
