@@ -1,5 +1,5 @@
 import { Pin, Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RoomState } from "../shared/types";
 
 export function HostPanel({
@@ -13,10 +13,18 @@ export function HostPanel({
 }) {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"question" | "guess">("question");
+  const hostLogRef = useRef<HTMLDivElement>(null);
   const remainingQuestions = Math.max(room.questionLimit - room.questionsUsed, 0);
   const isSolved = room.answerUnlocked;
   const isQuestionLimitReached = remainingQuestions === 0;
   const isDisabled = isSolved || (mode === "question" && isQuestionLimitReached);
+
+  useEffect(() => {
+    const log = hostLogRef.current;
+    if (log) {
+      log.scrollTop = log.scrollHeight;
+    }
+  }, [room.hostLog.length]);
 
   function submit() {
     const trimmed = question.trim();
@@ -43,25 +51,31 @@ export function HostPanel({
         </div>
         {room.answerUnlocked && <span className="unlock-label">汤底已解锁</span>}
       </div>
-      <div className="host-log">
+      <div className="host-log" ref={hostLogRef}>
         {room.hostLog.length === 0 ? (
           <p className="muted">暂无问答记录</p>
         ) : (
           room.hostLog.map((item) => (
             <article className={`answer-card answer-${item.answerType}`} key={item.id}>
               <div className="question-line">
-                {item.playerName}：{item.question}
+                <span className="line-label">{item.playerName}</span>
+                <p>{item.question}</p>
               </div>
-              <div className="answer-line">汤仙人：{item.answer}</div>
-              <div className="answer-meta">
-                <span>完成度 {item.progress}%</span>
-                {item.progressDelta > 0 && <span>+{item.progressDelta}%</span>}
-                {item.contributionScore > 0 && <span>{item.contributionScore} 分</span>}
-                {item.isBreakthrough && <span>关键突破</span>}
+              <div className="answer-line">
+                <span className="line-label">汤仙人</span>
+                <p>{item.answer}</p>
               </div>
-              <button className="icon-button" onClick={() => onPin(item.id)} title="收藏到卷宗">
-                <Pin size={15} /> {item.pinned ? "已收藏" : "收藏"}
-              </button>
+              <div className="answer-card-foot">
+                <div className="answer-meta">
+                  <span>完成度 {item.progress}%</span>
+                  {item.progressDelta > 0 && <span>+{item.progressDelta}%</span>}
+                  {item.contributionScore > 0 && <span>{item.contributionScore} 分</span>}
+                  {item.isBreakthrough && <span>关键突破</span>}
+                </div>
+                <button className="icon-button" onClick={() => onPin(item.id)} title="收藏到卷宗">
+                  <Pin size={15} /> {item.pinned ? "已收藏" : "收藏"}
+                </button>
+              </div>
             </article>
           ))
         )}
