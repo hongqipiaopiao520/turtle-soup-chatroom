@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Socket } from "socket.io-client";
-import type { Puzzle, RoomSession, RoomState } from "../shared/types";
+import type { PublicPuzzle, RoomSession, RoomState } from "../shared/types";
 import { createSocket } from "./socket";
 
 export function useRoomSocket() {
@@ -36,7 +36,7 @@ export function useRoomSocket() {
     room,
     playerId,
     error,
-    createRoom(puzzle: Puzzle, playerName: string) {
+    createRoom(puzzle: Pick<PublicPuzzle, "id">, playerName: string) {
       socket.emit("room:create", { puzzleId: puzzle.id, playerName });
     },
     joinRoom(roomId: string, playerName: string) {

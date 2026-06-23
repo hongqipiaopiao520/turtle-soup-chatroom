@@ -24,6 +24,8 @@ export interface Puzzle {
   createdAt: string;
 }
 
+export type PublicPuzzle = Omit<Puzzle, "truth">;
+
 export type PuzzleStatus = "draft" | "reviewing" | "published" | "rejected";
 
 export interface ManagedPuzzle extends Puzzle {

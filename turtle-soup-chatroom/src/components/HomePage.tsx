@@ -1,15 +1,16 @@
 import { Search, Shuffle, Users } from "lucide-react";
 import { useMemo, useState } from "react";
-import { seedPuzzles } from "../data/seedPuzzles";
 import { collectTags, filterPuzzles } from "../shared/puzzleFilters";
-import type { Difficulty, Puzzle, PuzzleSort } from "../shared/types";
+import type { Difficulty, PublicPuzzle, PuzzleSort } from "../shared/types";
 import { PuzzleCard } from "./PuzzleCard";
 
 export function HomePage({
+  puzzles: availablePuzzles,
   onOpenPuzzle,
   onRandomPuzzle
 }: {
-  onOpenPuzzle: (puzzle: Puzzle) => void;
+  puzzles: PublicPuzzle[];
+  onOpenPuzzle: (puzzle: PublicPuzzle) => void;
   onRandomPuzzle: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -17,10 +18,10 @@ export function HomePage({
   const [tag, setTag] = useState<string | "all">("all");
   const [sort, setSort] = useState<PuzzleSort>("hot");
 
-  const tags = useMemo(() => collectTags(seedPuzzles), []);
-  const puzzles = useMemo(
-    () => filterPuzzles(seedPuzzles, { query, difficulty, tag, sort }),
-    [query, difficulty, tag, sort]
+  const tags = useMemo(() => collectTags(availablePuzzles), [availablePuzzles]);
+  const visiblePuzzles = useMemo(
+    () => filterPuzzles(availablePuzzles, { query, difficulty, tag, sort }),
+    [availablePuzzles, query, difficulty, tag, sort]
   );
 
   return (
@@ -68,7 +69,7 @@ export function HomePage({
 
       <section className="home-grid">
         <div className="puzzle-list">
-          {puzzles.map((puzzle) => (
+          {visiblePuzzles.map((puzzle) => (
             <PuzzleCard puzzle={puzzle} onOpen={onOpenPuzzle} key={puzzle.id} />
           ))}
         </div>

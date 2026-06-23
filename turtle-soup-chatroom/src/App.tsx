@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import { fetchPublicPuzzles } from "./client/puzzles";
 import { useRoomSocket } from "./client/useRoomSocket";
 import { HomePage } from "./components/HomePage";
 import { PuzzleDetail } from "./components/PuzzleDetail";
 import { RoomPage } from "./components/RoomPage";
 import { seedPuzzles } from "./data/seedPuzzles";
-import type { Puzzle } from "./shared/types";
+import type { PublicPuzzle } from "./shared/types";
 
 type View =
   | { name: "home" }
-  | { name: "detail"; puzzle: Puzzle }
+  | { name: "detail"; puzzle: PublicPuzzle }
   | { name: "room" };
 
 type NameRequest =
-  | { kind: "create"; puzzle: Puzzle }
+  | { kind: "create"; puzzle: PublicPuzzle }
   | { kind: "join"; roomId: string };
 
 function roomSessionKey(roomId: string) {
@@ -40,9 +41,28 @@ function clearRoomSession(roomId: string) {
 
 export function App() {
   const [view, setView] = useState<View>({ name: "home" });
-  const [pendingPuzzle, setPendingPuzzle] = useState<Puzzle | null>(null);
+  const [puzzles, setPuzzles] = useState<PublicPuzzle[]>(seedPuzzles);
+  const [pendingPuzzle, setPendingPuzzle] = useState<PublicPuzzle | null>(null);
   const [nameRequest, setNameRequest] = useState<NameRequest | null>(null);
   const roomSocket = useRoomSocket();
+
+  useEffect(() => {
+    let isActive = true;
+    fetchPublicPuzzles()
+      .then((nextPuzzles) => {
+        if (isActive && nextPuzzles.length > 0) {
+          setPuzzles(nextPuzzles);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setPuzzles(seedPuzzles);
+        }
+      });
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -85,13 +105,13 @@ export function App() {
 
   const randomPuzzle = useMemo(
     () => () => {
-      const puzzle = seedPuzzles[Math.floor(Math.random() * seedPuzzles.length)];
+      const puzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
       setView({ name: "detail", puzzle });
     },
-    []
+    [puzzles]
   );
 
-  function startRoom(puzzle: Puzzle) {
+  function startRoom(puzzle: PublicPuzzle) {
     setNameRequest({ kind: "create", puzzle });
   }
 
@@ -140,6 +160,7 @@ export function App() {
       {roomSocket.error && <div className="toast-error">{roomSocket.error}</div>}
       {nameRequest && <NameDialog request={nameRequest} onCancel={() => setNameRequest(null)} onSubmit={submitName} />}
       <HomePage
+        puzzles={puzzles}
         onOpenPuzzle={(puzzle) => setView({ name: "detail", puzzle })}
         onRandomPuzzle={randomPuzzle}
       />

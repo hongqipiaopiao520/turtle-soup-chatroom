@@ -1,5 +1,5 @@
 import { ArrowLeft, Play, Star, Users } from "lucide-react";
-import type { Puzzle } from "../shared/types";
+import type { PublicPuzzle } from "../shared/types";
 
 const difficultyLabel = {
   easy: "简单",
@@ -12,9 +12,9 @@ export function PuzzleDetail({
   onBack,
   onStart
 }: {
-  puzzle: Puzzle;
+  puzzle: PublicPuzzle;
   onBack: () => void;
-  onStart: (puzzle: Puzzle) => void;
+  onStart: (puzzle: PublicPuzzle) => void;
 }) {
   return (
     <main className="app-shell detail-shell">

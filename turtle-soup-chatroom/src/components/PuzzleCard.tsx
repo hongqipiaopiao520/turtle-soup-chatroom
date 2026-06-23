@@ -1,5 +1,5 @@
 import { Star, Users } from "lucide-react";
-import type { Puzzle } from "../shared/types";
+import type { PublicPuzzle } from "../shared/types";
 
 const difficultyLabel = {
   easy: "简单",
@@ -11,8 +11,8 @@ export function PuzzleCard({
   puzzle,
   onOpen
 }: {
-  puzzle: Puzzle;
-  onOpen: (puzzle: Puzzle) => void;
+  puzzle: PublicPuzzle;
+  onOpen: (puzzle: PublicPuzzle) => void;
 }) {
   return (
     <button className="puzzle-card" onClick={() => onOpen(puzzle)}>

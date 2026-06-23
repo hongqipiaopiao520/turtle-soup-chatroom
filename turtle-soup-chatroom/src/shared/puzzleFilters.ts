@@ -1,10 +1,10 @@
-import type { Puzzle, PuzzleFilters } from "./types";
+import type { PublicPuzzle, PuzzleFilters } from "./types";
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
-export function filterPuzzles(puzzles: Puzzle[], filters: PuzzleFilters) {
+export function filterPuzzles<TPuzzle extends PublicPuzzle>(puzzles: TPuzzle[], filters: PuzzleFilters) {
   const query = normalize(filters.query ?? "");
 
   const filtered = puzzles.filter((puzzle) => {
@@ -36,6 +36,6 @@ export function filterPuzzles(puzzles: Puzzle[], filters: PuzzleFilters) {
   });
 }
 
-export function collectTags(puzzles: Puzzle[]) {
+export function collectTags(puzzles: PublicPuzzle[]) {
   return Array.from(new Set(puzzles.flatMap((puzzle) => puzzle.tags))).sort();
 }
