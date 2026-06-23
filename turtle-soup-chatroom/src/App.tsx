@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchPublicPuzzles } from "./client/puzzles";
 import { useRoomSocket } from "./client/useRoomSocket";
+import { AdminPage } from "./components/AdminPage";
 import { HomePage } from "./components/HomePage";
 import { PuzzleDetail } from "./components/PuzzleDetail";
 import { RoomPage } from "./components/RoomPage";
@@ -40,6 +41,14 @@ function clearRoomSession(roomId: string) {
 }
 
 export function App() {
+  if (typeof window !== "undefined" && window.location.pathname === "/admin") {
+    return <AdminPage />;
+  }
+
+  return <PlayerApp />;
+}
+
+function PlayerApp() {
   const [view, setView] = useState<View>({ name: "home" });
   const [puzzles, setPuzzles] = useState<PublicPuzzle[]>(seedPuzzles);
   const [pendingPuzzle, setPendingPuzzle] = useState<PublicPuzzle | null>(null);
