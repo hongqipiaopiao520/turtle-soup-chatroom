@@ -157,10 +157,10 @@ export interface ManagedPuzzle extends Puzzle {
 
 **Steps:**
 
-- [ ] Add `PuzzleStatus` and `ManagedPuzzle`.
-- [ ] Update tests that construct `Puzzle` only if TypeScript requires it.
-- [ ] Run `npm run build`.
-- [ ] Commit: `feat: add managed puzzle types`.
+- [x] Add `PuzzleStatus` and `ManagedPuzzle`.
+- [x] Update tests that construct `Puzzle` only if TypeScript requires it.
+- [x] Run `npm run build`.
+- [x] Commit: `feat: add managed puzzle types`.
 
 ### Task 2: Add SQLite Database Module
 
@@ -176,19 +176,19 @@ Use `better-sqlite3` unless deployment constraints require another driver.
 
 **Steps:**
 
-- [ ] Install runtime and type dependency:
+- [x] Install runtime and type dependency:
 
 ```bash
 npm install better-sqlite3
 npm install -D @types/better-sqlite3
 ```
 
-- [ ] Add migration SQL for `schema_migrations`, `puzzles`, and `rooms`.
-- [ ] Add `openDatabase(filePath?: string)` that creates parent directories and applies unapplied migrations.
-- [ ] Test that an empty temp DB gets all tables.
-- [ ] Test that running migrations twice is idempotent.
-- [ ] Run `npm run test -- tests/storage/database.test.ts`.
-- [ ] Commit: `feat: add sqlite storage foundation`.
+- [x] Add migration SQL for `schema_migrations`, `puzzles`, and `rooms`.
+- [x] Add `openDatabase(filePath?: string)` that creates parent directories and applies unapplied migrations.
+- [x] Test that an empty temp DB gets all tables.
+- [x] Test that running migrations twice is idempotent.
+- [x] Run `npm run test -- tests/storage/database.test.ts`.
+- [x] Commit: `feat: add sqlite storage foundation`.
 
 ### Task 3: Add Puzzle Repository
 
@@ -211,13 +211,13 @@ export interface PuzzleRepository {
 
 **Steps:**
 
-- [ ] Write row-to-model and model-to-row converters for JSON fields.
-- [ ] Insert the current `seedPuzzles` as `published` records when `puzzles` is empty.
-- [ ] Test `listPublished()` returns only published puzzles.
-- [ ] Test JSON fields round-trip: `solutionPoints`, `tags`, `hints`, `qualityIssues`.
-- [ ] Test `publish(id)` sets `status = "published"` and `publishedAt`.
-- [ ] Run repository tests.
-- [ ] Commit: `feat: add puzzle repository`.
+- [x] Write row-to-model and model-to-row converters for JSON fields.
+- [x] Insert the current `seedPuzzles` as `published` records when `puzzles` is empty.
+- [x] Test `listPublished()` returns only published puzzles.
+- [x] Test JSON fields round-trip: `solutionPoints`, `tags`, `hints`, `qualityIssues`.
+- [x] Test `publish(id)` sets `status = "published"` and `publishedAt`.
+- [x] Run repository tests.
+- [x] Commit: `feat: add puzzle repository`.
 
 ---
 
@@ -233,15 +233,15 @@ export interface PuzzleRepository {
 
 **Steps:**
 
-- [ ] Initialize SQLite on server startup.
-- [ ] Seed DB from `seedPuzzles` only if the table is empty.
-- [ ] Change `/api/puzzles` to return `puzzleRepository.listPublished()`.
-- [ ] Change `room:create` to look up puzzle by id from repository.
-- [ ] Keep frontend seed usage temporarily if needed, but plan to remove it after API loading is wired.
-- [ ] Test `/api/puzzles` excludes `truth` but includes `solutionPoints` only if current public API still needs it.
-- [ ] Test `room:create` rejects unpublished/missing puzzle ids.
-- [ ] Run full tests and build.
-- [ ] Commit: `feat: load puzzles from storage`.
+- [x] Initialize SQLite on server startup.
+- [x] Seed DB from `seedPuzzles` only if the table is empty.
+- [x] Change `/api/puzzles` to return `puzzleRepository.listPublished()`.
+- [x] Change `room:create` to look up puzzle by id from repository.
+- [x] Keep frontend seed usage temporarily if needed, but plan to remove it after API loading is wired.
+- [x] Test `/api/puzzles` excludes `truth` but includes `solutionPoints` only if current public API still needs it.
+- [x] Test `room:create` rejects unpublished/missing puzzle ids.
+- [x] Run full tests and build.
+- [x] Commit: `feat: load puzzles from storage`.
 
 ### Task 5: Persist Rooms To SQLite
 
@@ -264,14 +264,14 @@ export interface RoomRepository {
 
 **Steps:**
 
-- [ ] Test saving and loading one room snapshot.
-- [ ] Test `remove(roomId)` deletes the snapshot.
-- [ ] On startup, call `importRoomsSnapshot(roomRepository.loadAll())`.
-- [ ] Replace `savePersistedRooms(exportRoomsSnapshot())` with `roomRepository.saveAll(exportRoomsSnapshot())`.
-- [ ] When an empty room is removed, delete it from SQLite too.
-- [ ] Keep `data/rooms.json` migration path: if SQLite has no rooms and JSON exists, import it once.
-- [ ] Run full tests and build.
-- [ ] Commit: `feat: persist rooms in sqlite`.
+- [x] Test saving and loading one room snapshot.
+- [x] Test `remove(roomId)` deletes the snapshot.
+- [x] On startup, call `importRoomsSnapshot(roomRepository.loadAll())`.
+- [x] Replace `savePersistedRooms(exportRoomsSnapshot())` with `roomRepository.saveAll(exportRoomsSnapshot())`.
+- [x] When an empty room is removed, delete it from SQLite too.
+- [x] Keep `data/rooms.json` migration path: if SQLite has no rooms and JSON exists, import it once.
+- [x] Run full tests and build.
+- [x] Commit: `feat: persist rooms in sqlite`.
 
 ---
 
@@ -295,11 +295,11 @@ POST /api/admin/puzzles/:id/reject
 
 **Steps:**
 
-- [ ] Add route tests for list, import text placeholder, publish, reject.
-- [ ] For `import-text`, initially store `rawText` and `status = "draft"` without LLM.
-- [ ] Add simple admin token guard using `ADMIN_TOKEN` env var; in dev, allow missing token only when `NODE_ENV !== "production"`.
-- [ ] Run route tests.
-- [ ] Commit: `feat: add admin puzzle api`.
+- [x] Add route tests for list, import text placeholder, publish, reject.
+- [x] For `import-text`, initially store `rawText` and `status = "draft"` without LLM.
+- [x] Add simple admin token guard using `ADMIN_TOKEN` env var; in dev, allow missing token only when `NODE_ENV !== "production"`.
+- [x] Run route tests.
+- [x] Commit: `feat: add admin puzzle api`.
 
 ### Task 7: Add LLM Structuring For Imported Text
 
@@ -320,14 +320,14 @@ export async function importPuzzleFromText(rawText: string): Promise<PuzzleImpor
 
 **Steps:**
 
-- [ ] Use existing MIMO/OpenAI-compatible config pattern from `server/aiHost.ts`.
-- [ ] Prompt LLM to return strict JSON for `title`, `surface`, `truth`, `solutionPoints`, `hints`, `difficulty`, `tags`, `qualityScore`, `qualityIssues`, `qualitySummary`.
-- [ ] Validate output with Zod.
-- [ ] Fallback to `draft` with quality issue if LLM fails.
-- [ ] Test valid LLM JSON becomes `reviewing`.
-- [ ] Test invalid LLM JSON becomes `draft` with an issue.
-- [ ] Run importer tests.
-- [ ] Commit: `feat: structure imported puzzles with ai`.
+- [x] Use existing MIMO/OpenAI-compatible config pattern from `server/aiHost.ts`.
+- [x] Prompt LLM to return strict JSON for `title`, `surface`, `truth`, `solutionPoints`, `hints`, `difficulty`, `tags`, `qualityScore`, `qualityIssues`, `qualitySummary`.
+- [x] Validate output with Zod.
+- [x] Fallback to `draft` with quality issue if LLM fails.
+- [x] Test valid LLM JSON becomes `reviewing`.
+- [x] Test invalid LLM JSON becomes `draft` with an issue.
+- [x] Run importer tests.
+- [x] Commit: `feat: structure imported puzzles with ai`.
 
 ---
 
@@ -350,11 +350,11 @@ PORT=8787
 
 **Steps:**
 
-- [ ] Document single-server deploy: install deps, set env, run build, start server.
-- [ ] Document that `data/app.sqlite` must be on persistent disk.
-- [ ] Add backup script that copies SQLite file to `data/backups/app-YYYY-MM-DD-HH-mm-ss.sqlite`.
-- [ ] Test backup script against a temp DB path.
-- [ ] Commit: `docs: add sqlite deployment guide`.
+- [x] Document single-server deploy: install deps, set env, run build, start server.
+- [x] Document that `data/app.sqlite` must be on persistent disk.
+- [x] Add backup script that copies SQLite file to `data/backups/app-YYYY-MM-DD-HH-mm-ss.sqlite`.
+- [x] Test backup script against a temp DB path.
+- [x] Commit: `docs: add sqlite deployment guide`.
 
 ---
 
@@ -371,9 +371,9 @@ Do not implement in this migration, but keep it visible:
 
 ## Verification Checklist
 
-- [ ] `npm run test`
-- [ ] `npm run build`
+- [x] `npm run test`
+- [x] `npm run build`
 - [ ] Create room, ask host, restart server, rejoin room.
-- [ ] Import a draft puzzle, publish it, refresh homepage, create room from it.
-- [ ] Confirm `data/rooms.json` is no longer required for normal runtime.
-- [ ] Confirm `data/app.sqlite` survives process restart.
+- [x] Import a draft puzzle, publish it, refresh homepage, create room from it. (Covered by repository/API/client tests; manual browser publish UI not built yet.)
+- [x] Confirm `data/rooms.json` is no longer required for normal runtime.
+- [x] Confirm `data/app.sqlite` survives process restart via repository persistence tests.
