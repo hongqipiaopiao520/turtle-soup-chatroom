@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently \"npm run server\" \"vite --host 0.0.0.0\"",
     "server": "tsx watch server/index.ts",
+    "backup:sqlite": "node scripts/backup-sqlite.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "tsc --noEmit && vite build"

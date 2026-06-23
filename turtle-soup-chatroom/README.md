@@ -35,9 +35,34 @@ PORT=8787
 
 Without either set of values, the host panel returns a configuration warning instead of calling a model.
 
-## Local Room Persistence
+## Storage
 
-Rooms are persisted locally to `data/rooms.json` while the dev server runs. The `data/` directory is git-ignored, so local playtest rooms stay on your machine and are not committed.
+The server uses SQLite by default:
+
+```bash
+DATABASE_URL=file:./data/app.sqlite
+ADMIN_TOKEN=replace_me
+```
+
+`data/app.sqlite` stores published puzzles, puzzle drafts, and room snapshots. Keep the `data/` directory on persistent disk when deploying to a VPS or container host. If `data/rooms.json` exists from an older local run and SQLite has no rooms yet, the server imports it once on startup.
+
+Back up the SQLite file with:
+
+```bash
+npm run backup:sqlite
+```
+
+Backups are written to `data/backups/`.
+
+## Single-Server Deploy
+
+```bash
+npm install
+npm run build
+NODE_ENV=production DATABASE_URL=file:./data/app.sqlite ADMIN_TOKEN=replace_me PORT=8787 npm run server
+```
+
+For production, put the SQLite file on a persistent volume and run the Node process with PM2, systemd, or your platform's process manager.
 
 ## MVP Checks
 
