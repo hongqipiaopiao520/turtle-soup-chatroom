@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { askHost, parseHostResponse, type AskHostInput } from "../server/aiHost";
+import { loadLocalEnv } from "../server/env";
 
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
@@ -57,6 +61,66 @@ describe("parseHostResponse", () => {
 });
 
 describe("askHost", () => {
+  it("uses MIMO configuration when generic AI configuration is absent", async () => {
+    delete process.env.AI_BASE_URL;
+    delete process.env.AI_API_KEY;
+    delete process.env.AI_MODEL;
+    process.env.MIMO_BASE_URL = "https://mimo.example/v1";
+    process.env.MIMO_API_KEY = "mimo-key";
+    process.env.MIMO_AGENT_MODEL = "mimo-agent";
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content: '{"answerType":"yes","answer":"是。"}' } }]
+      })
+    } as unknown as Response);
+
+    await expect(askHost(askHostInput)).resolves.toEqual({
+      answerType: "yes",
+      answer: "是。"
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://mimo.example/v1/chat/completions",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer mimo-key"
+        }),
+        body: expect.stringContaining('"model":"mimo-agent"')
+      })
+    );
+  });
+
+  it("prefers generic AI configuration over MIMO configuration", async () => {
+    process.env.AI_BASE_URL = "https://ai.example/v1";
+    process.env.AI_API_KEY = "ai-key";
+    process.env.AI_MODEL = "ai-model";
+    process.env.MIMO_BASE_URL = "https://mimo.example/v1";
+    process.env.MIMO_API_KEY = "mimo-key";
+    process.env.MIMO_AGENT_MODEL = "mimo-agent";
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content: '{"answerType":"no","answer":"不是。"}' } }]
+      })
+    } as unknown as Response);
+
+    await expect(askHost(askHostInput)).resolves.toEqual({
+      answerType: "no",
+      answer: "不是。"
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://ai.example/v1/chat/completions",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer ai-key"
+        }),
+        body: expect.stringContaining('"model":"ai-model"')
+      })
+    );
+  });
+
   it("falls back safely when fetch throws", async () => {
     configureAiEnv();
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("network failed"));
@@ -78,5 +142,29 @@ describe("askHost", () => {
       answerType: "partial",
       answer: "汤仙人暂时走神了，请稍后重试。"
     });
+  });
+});
+
+describe("loadLocalEnv", () => {
+  it("loads values from a local .env file without overriding existing process env", () => {
+    const projectDir = join(tmpdir(), `turtle-env-${Date.now()}`);
+    mkdirSync(projectDir, { recursive: true });
+    process.env.MIMO_API_KEY = "existing-key";
+    writeFileSync(
+      join(projectDir, ".env"),
+      [
+        "MIMO_BASE_URL=https://mimo.example/v1",
+        "MIMO_API_KEY=file-key",
+        "MIMO_AGENT_MODEL=mimo-agent"
+      ].join("\n")
+    );
+
+    loadLocalEnv(projectDir);
+
+    expect(process.env.MIMO_BASE_URL).toBe("https://mimo.example/v1");
+    expect(process.env.MIMO_API_KEY).toBe("existing-key");
+    expect(process.env.MIMO_AGENT_MODEL).toBe("mimo-agent");
+
+    rmSync(projectDir, { recursive: true, force: true });
   });
 });

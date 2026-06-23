@@ -2,7 +2,10 @@ import express from "express";
 import http from "node:http";
 import { Server } from "socket.io";
 import { seedPuzzles } from "../src/data/seedPuzzles";
+import { loadLocalEnv } from "./env";
 import { registerSocketHandlers } from "./socketHandlers";
+
+loadLocalEnv();
 
 const app = express();
 const server = http.createServer(app);

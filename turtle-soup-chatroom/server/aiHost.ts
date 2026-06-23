@@ -18,6 +18,14 @@ export interface HostDecision {
   answer: string;
 }
 
+export function getAiHostConfig() {
+  return {
+    baseUrl: process.env.AI_BASE_URL || process.env.MIMO_BASE_URL,
+    apiKey: process.env.AI_API_KEY || process.env.MIMO_API_KEY,
+    model: process.env.AI_MODEL || process.env.MIMO_AGENT_MODEL
+  };
+}
+
 export function parseHostResponse(raw: string): HostDecision {
   try {
     const parsed = HostDecisionSchema.safeParse(JSON.parse(raw));
@@ -70,14 +78,12 @@ export function buildHostPrompt(input: AskHostInput) {
 }
 
 export async function askHost(input: AskHostInput): Promise<HostDecision> {
-  const baseUrl = process.env.AI_BASE_URL;
-  const apiKey = process.env.AI_API_KEY;
-  const model = process.env.AI_MODEL;
+  const { baseUrl, apiKey, model } = getAiHostConfig();
 
   if (!baseUrl || !apiKey || !model) {
     return {
       answerType: "partial",
-      answer: "AI 主持人尚未配置。请在服务端设置 AI_BASE_URL、AI_API_KEY 和 AI_MODEL。"
+      answer: "AI 主持人尚未配置。请在服务端设置 AI_* 或 MIMO_* 环境变量。"
     };
   }
 

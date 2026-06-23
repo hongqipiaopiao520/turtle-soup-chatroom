@@ -14,16 +14,26 @@ Then open `http://localhost:5173`.
 
 ## AI Configuration
 
-Set these values in `.env` before using the real AI host:
+The server loads local `.env` values on startup. Generic `AI_*` values take precedence; if they are absent, the host falls back to `MIMO_*`.
 
 ```bash
-AI_BASE_URL=https://api.openai.com/v1
+AI_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
 AI_API_KEY=replace_me
-AI_MODEL=gpt-4.1-mini
+AI_MODEL=mimo-v2.5-pro
 PORT=8787
 ```
 
-Without these values, the host panel returns a configuration warning instead of calling a model.
+You can also use the MIMO-specific names:
+
+```bash
+MIMO_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
+MIMO_API_KEY=replace_me
+MIMO_AGENT_MODEL=mimo-v2.5-pro
+MIMO_FAST_MODEL=mimo-v2-flash
+PORT=8787
+```
+
+Without either set of values, the host panel returns a configuration warning instead of calling a model.
 
 ## MVP Checks
 
@@ -34,5 +44,5 @@ Without these values, the host panel returns a configuration warning instead of 
 - Invite link can be copied from the room.
 - Joining with `?room=<id>` asks for a nickname and joins the room.
 - Player chat appears for everyone in the room.
-- Host questions add AI answers to the host log.
+- Host questions add AI answers to the host log. With `.env` configured, the answer should come from the configured model instead of the local configuration warning.
 - Pinning an answer adds it to the case notebook.
