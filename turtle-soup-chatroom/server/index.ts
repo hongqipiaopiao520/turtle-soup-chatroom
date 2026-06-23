@@ -2,15 +2,22 @@ import express from "express";
 import http from "node:http";
 import { Server } from "socket.io";
 import { seedPuzzles } from "../src/data/seedPuzzles";
+import { createApp } from "./app";
 import { loadLocalEnv } from "./env";
 import { loadPersistedRooms } from "./roomPersistence";
 import { importRoomsSnapshot } from "./roomStore";
 import { registerSocketHandlers } from "./socketHandlers";
+import { openDatabase } from "./storage/database";
+import { createPuzzleRepository } from "./storage/puzzleRepository";
+import { seedPuzzleDatabase } from "./storage/seedDatabase";
 
 loadLocalEnv();
 importRoomsSnapshot(loadPersistedRooms());
 
-const app = express();
+const database = openDatabase();
+seedPuzzleDatabase(database, seedPuzzles);
+const puzzleRepository = createPuzzleRepository(database);
+const app = createApp(puzzleRepository);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -18,17 +25,7 @@ const io = new Server(server, {
   }
 });
 
-app.use(express.json());
-
-app.get("/api/health", (_request, response) => {
-  response.json({ ok: true });
-});
-
-app.get("/api/puzzles", (_request, response) => {
-  response.json(seedPuzzles.map(({ truth, ...publicPuzzle }) => publicPuzzle));
-});
-
-registerSocketHandlers(io);
+registerSocketHandlers(io, { puzzleRepository });
 
 const port = Number(process.env.PORT || 8787);
 server.listen(port, () => {

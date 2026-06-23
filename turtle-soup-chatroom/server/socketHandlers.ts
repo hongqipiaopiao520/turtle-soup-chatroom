@@ -1,5 +1,5 @@
 import type { Server, Socket } from "socket.io";
-import { seedPuzzles } from "../src/data/seedPuzzles";
+import type { Puzzle } from "../src/shared/types";
 import { askHost } from "./aiHost";
 import { savePersistedRooms } from "./roomPersistence";
 import {
@@ -13,6 +13,11 @@ import {
   rejoinRoom,
   removePlayer
 } from "./roomStore";
+import type { PuzzleRepository } from "./storage/puzzleRepository";
+
+interface SocketHandlerDependencies {
+  puzzleRepository: PuzzleRepository;
+}
 
 function emitError(socket: Socket, error: unknown) {
   socket.emit("server:error", {
@@ -24,12 +29,19 @@ function persistRooms() {
   savePersistedRooms(exportRoomsSnapshot());
 }
 
-export function registerSocketHandlers(io: Server) {
+export function getPublishedPuzzleForRoom(puzzleRepository: PuzzleRepository, puzzleId: string): Puzzle {
+  const puzzle = puzzleRepository.findById(puzzleId);
+  if (!puzzle || puzzle.status !== "published") {
+    throw new Error("题目不存在");
+  }
+  return puzzle;
+}
+
+export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDependencies) {
   io.on("connection", (socket) => {
     socket.on("room:create", ({ puzzleId, playerName }) => {
       try {
-        const puzzle = seedPuzzles.find((item) => item.id === puzzleId);
-        if (!puzzle) throw new Error("题目不存在");
+        const puzzle = getPublishedPuzzleForRoom(dependencies.puzzleRepository, puzzleId);
         const session = createRoom(puzzle, playerName);
         const { room } = session;
         socket.join(room.id);
