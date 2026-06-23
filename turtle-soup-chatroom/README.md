@@ -1,6 +1,6 @@
 # 出前一汤聊天室 MVP
 
-线上海龟汤聊天室初版：题库选题、创建房间、好友聊天、AI 主持问答、最终推理和调查卷宗。
+线上海龟汤聊天室初版：题库选题、创建房间、好友聊天、AI 主持问答、完成度解锁、贡献榜结算和调查卷宗。
 
 ## Local Setup
 
@@ -48,5 +48,6 @@ Rooms are persisted locally to `data/rooms.json` while the dev server runs. The 
 - Invite link can be copied from the room.
 - Joining with `?room=<id>` asks for a nickname and joins the room.
 - Player chat appears for everyone in the room.
-- Host questions add AI answers to the host log. With `.env` configured, the answer should come from the configured model instead of the local configuration warning.
+- Host questions add AI answers and completion progress to the host log. With `.env` configured, the answer should come from the configured model instead of the local configuration warning.
+- The answer unlocks when progress reaches 95%, then shows the full truth, MVP, and best answer.
 - Pinning an answer adds it to the case notebook.

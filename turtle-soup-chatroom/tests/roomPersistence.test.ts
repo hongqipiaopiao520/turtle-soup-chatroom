@@ -19,12 +19,25 @@ function makeRoom(): RoomState {
     id: "room-test",
     puzzle: seedPuzzles[0],
     status: "playing",
-    players: [{ id: "player-test", name: "房主", isHost: true, joinedAt: "2026-06-23T00:00:00.000Z" }],
+    players: [
+      {
+        id: "player-test",
+        name: "房主",
+        isHost: true,
+        joinedAt: "2026-06-23T00:00:00.000Z",
+        score: 0,
+        hits: 0,
+        bestDelta: 0
+      }
+    ],
     hostLog: [],
     chatMessages: [],
     caseNotes: [],
     questionLimit: 20,
     questionsUsed: 0,
+    progress: 0,
+    answerUnlocked: false,
+    truthRevealed: false,
     createdAt: "2026-06-23T00:00:00.000Z"
   };
 }

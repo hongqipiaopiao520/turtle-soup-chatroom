@@ -15,6 +15,7 @@ export interface Puzzle {
   title: string;
   surface: string;
   truth: string;
+  solutionPoints: string[];
   difficulty: Difficulty;
   tags: string[];
   author: string;
@@ -37,6 +38,9 @@ export interface Player {
   name: string;
   isHost: boolean;
   joinedAt: string;
+  score: number;
+  hits: number;
+  bestDelta: number;
 }
 
 export interface HostAnswer {
@@ -46,6 +50,10 @@ export interface HostAnswer {
   question: string;
   answerType: HostAnswerType;
   answer: string;
+  progress: number;
+  progressDelta: number;
+  contributionScore: number;
+  isBreakthrough: boolean;
   pinned: boolean;
   createdAt: string;
 }
@@ -75,10 +83,20 @@ export interface RoomState {
   caseNotes: CaseNote[];
   questionLimit: number;
   questionsUsed: number;
+  progress: number;
+  answerUnlocked: boolean;
+  truthRevealed: boolean;
+  settlement?: RoomSettlement;
   createdAt: string;
 }
 
 export interface RoomSession {
   room: RoomState;
   playerId: string;
+}
+
+export interface RoomSettlement {
+  mvpPlayerId?: string;
+  bestAnswerId?: string;
+  unlockingPlayerId?: string;
 }

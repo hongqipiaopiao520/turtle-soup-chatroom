@@ -12,6 +12,13 @@ export function SidePanel({
   onSendChat: (body: string) => void;
 }) {
   const [chat, setChat] = useState("");
+  const rankedPlayers = [...room.players].sort((a, b) => b.score - a.score);
+  const mvp = room.settlement?.mvpPlayerId
+    ? room.players.find((player) => player.id === room.settlement?.mvpPlayerId)
+    : rankedPlayers[0];
+  const bestAnswer = room.settlement?.bestAnswerId
+    ? room.hostLog.find((item) => item.id === room.settlement?.bestAnswerId)
+    : [...room.hostLog].sort((a, b) => b.progressDelta - a.progressDelta)[0];
 
   function submitChat() {
     const trimmed = chat.trim();
@@ -33,6 +40,22 @@ export function SidePanel({
               {player.id === playerId ? "（你）" : ""}
               {player.isHost ? " · 发起人" : ""}
             </span>
+          ))}
+        </div>
+      </section>
+      <section className="side-section">
+        <h2>
+          <Users size={17} /> 贡献榜
+        </h2>
+        <div className="score-list">
+          {rankedPlayers.map((player) => (
+            <div className="score-row" key={player.id}>
+              <span>
+                {player.name}
+                {player.id === playerId ? "（你）" : ""}
+              </span>
+              <strong>{player.score}</strong>
+            </div>
           ))}
         </div>
       </section>
@@ -68,6 +91,20 @@ export function SidePanel({
           room.caseNotes.map((note) => <pre key={note.id}>{note.body}</pre>)
         )}
       </section>
+      {room.answerUnlocked && (
+        <section className="side-section reveal-section">
+          <h2>
+            <NotebookTabs size={17} /> 汤底已解锁
+          </h2>
+          <pre>{room.puzzle.truth}</pre>
+          <div className="settlement-grid">
+            <span>本局 MVP</span>
+            <strong>{mvp?.name ?? "暂无"}</strong>
+            <span>最佳回答</span>
+            <strong>{bestAnswer ? `${bestAnswer.playerName} +${bestAnswer.progressDelta}%` : "暂无"}</strong>
+          </div>
+        </section>
+      )}
     </aside>
   );
 }

@@ -98,7 +98,8 @@ export function registerSocketHandlers(io: Server) {
           playerName: player.name,
           question,
           answerType: decision.answerType,
-          answer: decision.answer
+          answer: decision.answer,
+          progress: decision.progress
         });
 
         const updated = getRoom(roomId);

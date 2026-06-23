@@ -1,9 +1,12 @@
 import { z } from "zod";
 import type { HostAnswerType, Puzzle } from "../src/shared/types";
 
+const hostAnswerTypes: HostAnswerType[] = ["yes", "no", "irrelevant", "partial", "solved", "unsolved"];
+
 const HostDecisionSchema = z.object({
   answerType: z.enum(["yes", "no", "irrelevant", "partial", "solved", "unsolved"]),
-  answer: z.string().min(1).max(240)
+  answer: z.string().min(1).max(240),
+  progress: z.number().min(0).max(100).default(0)
 });
 
 export interface AskHostInput {
@@ -16,6 +19,17 @@ export interface AskHostInput {
 export interface HostDecision {
   answerType: HostAnswerType;
   answer: string;
+  progress: number;
+}
+
+function clampProgress(value: unknown) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(100, Math.round(numeric)));
+}
+
+function normalizeAnswerType(value: unknown): HostAnswerType {
+  return hostAnswerTypes.includes(value as HostAnswerType) ? (value as HostAnswerType) : "partial";
 }
 
 export function getAiHostConfig() {
@@ -33,15 +47,17 @@ export function parseHostResponse(raw: string): HostDecision {
       return parsed.data;
     }
 
-    const fallback = JSON.parse(raw) as { answer?: unknown };
+    const fallback = JSON.parse(raw) as { answer?: unknown; answerType?: unknown; progress?: unknown };
     return {
-      answerType: "partial",
-      answer: String(fallback.answer || raw).slice(0, 240)
+      answerType: normalizeAnswerType(fallback.answerType),
+      answer: String(fallback.answer || raw).slice(0, 240),
+      progress: clampProgress(fallback.progress)
     };
   } catch {
     return {
       answerType: "partial",
-      answer: raw.slice(0, 240)
+      answer: raw.slice(0, 240),
+      progress: 0
     };
   }
 }
@@ -59,9 +75,11 @@ export function buildHostPrompt(input: AskHostInput) {
         "你是线上海龟汤游戏的 AI 主持人。",
         "你必须严格基于汤底回答，不能编造新事实。",
         "普通提问只允许 answerType 为 yes、no、irrelevant、partial。",
-        "最终推理只允许 answerType 为 solved 或 unsolved。",
+        "推理提交可以使用 answerType solved 或 unsolved。",
+        "每次回复都要评估玩家群体已经接近汤底的完成度 progress，范围 0-100，只能基于关键点覆盖程度给分。",
+        "progress 达到 95 表示已经足以解锁汤底。",
         "输出必须是 JSON，不要 Markdown，不要额外解释。",
-        "JSON 格式：{\"answerType\":\"yes|no|irrelevant|partial|solved|unsolved\",\"answer\":\"一句中文回答\"}"
+        "JSON 格式：{\"answerType\":\"yes|no|irrelevant|partial|solved|unsolved\",\"answer\":\"一句中文回答\",\"progress\":0}"
       ].join("\n")
     },
     {
@@ -69,6 +87,7 @@ export function buildHostPrompt(input: AskHostInput) {
       content: [
         `汤面：${input.puzzle.surface}`,
         `汤底：${input.puzzle.truth}`,
+        `关键点：${input.puzzle.solutionPoints.join("；")}`,
         `历史问答：${input.history.map((item) => `Q:${item.question} A:${item.answer}`).join("\n") || "暂无"}`,
         `规则：${modeRule}`,
         `玩家输入：${input.question}`
@@ -83,7 +102,8 @@ export async function askHost(input: AskHostInput): Promise<HostDecision> {
   if (!baseUrl || !apiKey || !model) {
     return {
       answerType: "partial",
-      answer: "AI 主持人尚未配置。请在服务端设置 AI_* 或 MIMO_* 环境变量。"
+      answer: "AI 主持人尚未配置。请在服务端设置 AI_* 或 MIMO_* 环境变量。",
+      progress: 0
     };
   }
 
@@ -105,7 +125,8 @@ export async function askHost(input: AskHostInput): Promise<HostDecision> {
     if (!response.ok) {
       return {
         answerType: "partial",
-        answer: `汤仙人暂时走神了，请稍后重试。（${response.status}）`
+        answer: `汤仙人暂时走神了，请稍后重试。（${response.status}）`,
+        progress: 0
       };
     }
 
@@ -116,7 +137,8 @@ export async function askHost(input: AskHostInput): Promise<HostDecision> {
   } catch {
     return {
       answerType: "partial",
-      answer: "汤仙人暂时走神了，请稍后重试。"
+      answer: "汤仙人暂时走神了，请稍后重试。",
+      progress: 0
     };
   }
 }

@@ -59,6 +59,7 @@ describe("roomStore", () => {
       question: "女孩真的消失了吗？",
       answerType: "no",
       answer: "不是。",
+      progress: 10
     });
     const updated = pinAnswer(room.id, answer.id);
     expect(updated.caseNotes[0].body).toContain("女孩真的消失了吗？");
@@ -73,20 +74,22 @@ describe("roomStore", () => {
       playerName: "房主",
       question: "女孩真的消失了吗？",
       answerType: "no",
-      answer: "不是。"
+      answer: "不是。",
+      progress: 30
     });
     addHostAnswer(room.id, {
       playerId,
       playerName: "房主",
       question: "最终推理：这是告别仪式。",
       answerType: "unsolved",
-      answer: "还差一点。"
+      answer: "还差一点。",
+      progress: 40
     });
 
     expect(getRoom(room.id)?.questionsUsed).toBe(1);
   });
 
-  it("marks solved final guesses and prevents more host answers", () => {
+  it("unlocks the answer at 95 percent and prevents more host answers", () => {
     const { room, playerId } = createRoom(seedPuzzles[0], "房主");
 
     addHostAnswer(room.id, {
@@ -94,10 +97,13 @@ describe("roomStore", () => {
       playerName: "房主",
       question: "最终推理：她在参加告别仪式。",
       answerType: "solved",
-      answer: "完全正确。"
+      answer: "完全正确。",
+      progress: 96
     });
 
     expect(getRoom(room.id)?.status).toBe("solved");
+    expect(getRoom(room.id)?.answerUnlocked).toBe(true);
+    expect(getRoom(room.id)?.progress).toBe(96);
     expect(getRoom(room.id)?.questionsUsed).toBe(0);
     expect(() =>
       addHostAnswer(room.id, {
@@ -105,7 +111,8 @@ describe("roomStore", () => {
         playerName: "房主",
         question: "还能继续问吗？",
         answerType: "yes",
-        answer: "是。"
+        answer: "是。",
+        progress: 97
       })
     ).toThrow("本局已结束");
   });
@@ -119,7 +126,8 @@ describe("roomStore", () => {
       playerName: "房主",
       question: "第一问",
       answerType: "yes",
-      answer: "是。"
+      answer: "是。",
+      progress: 10
     });
 
     expect(() =>
@@ -128,9 +136,69 @@ describe("roomStore", () => {
         playerName: "房主",
         question: "第二问",
         answerType: "no",
-        answer: "不是。"
+        answer: "不是。",
+        progress: 20
       })
     ).toThrow("提问次数已用完");
+  });
+
+  it("keeps progress monotonic and scores player contributions", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主");
+    const joinSession = joinRoom(room.id, "玩家甲");
+
+    const first = addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "这和录音有关吗？",
+      answerType: "yes",
+      answer: "是。",
+      progress: 40
+    });
+    const second = addHostAnswer(room.id, {
+      playerId: joinSession.playerId,
+      playerName: "玩家甲",
+      question: "是告别仪式吗？",
+      answerType: "partial",
+      answer: "接近。",
+      progress: 35
+    });
+
+    const updated = getRoom(room.id);
+    expect(updated?.progress).toBe(40);
+    expect(first.progressDelta).toBe(40);
+    expect(first.contributionScore).toBe(450);
+    expect(second.progressDelta).toBe(0);
+    expect(second.contributionScore).toBe(0);
+    expect(updated?.players[0]).toMatchObject({ score: 450, hits: 1, bestDelta: 40 });
+    expect(updated?.players[1]).toMatchObject({ score: 0, hits: 0, bestDelta: 0 });
+  });
+
+  it("returns settlement highlights after the answer is unlocked", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主");
+    const joinSession = joinRoom(room.id, "玩家甲");
+
+    addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "这和录音有关吗？",
+      answerType: "yes",
+      answer: "是。",
+      progress: 40
+    });
+    const best = addHostAnswer(room.id, {
+      playerId: joinSession.playerId,
+      playerName: "玩家甲",
+      question: "最终推理：她参加沉浸式告别仪式，感谢父亲录音后离开。",
+      answerType: "solved",
+      answer: "已经接近真相。",
+      progress: 96
+    });
+
+    const updated = getRoom(room.id);
+    expect(updated?.answerUnlocked).toBe(true);
+    expect(updated?.settlement?.mvpPlayerId).toBe(joinSession.playerId);
+    expect(updated?.settlement?.bestAnswerId).toBe(best.id);
+    expect(updated?.settlement?.unlockingPlayerId).toBe(joinSession.playerId);
   });
 
   it("pins each host answer only once", () => {
@@ -140,7 +208,8 @@ describe("roomStore", () => {
       playerName: "房主",
       question: "女孩真的消失了吗？",
       answerType: "no",
-      answer: "不是。"
+      answer: "不是。",
+      progress: 10
     });
 
     pinAnswer(room.id, answer.id);

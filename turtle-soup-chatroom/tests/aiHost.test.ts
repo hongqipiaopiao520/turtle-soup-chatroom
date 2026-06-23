@@ -14,6 +14,7 @@ const askHostInput: AskHostInput = {
     title: "测试汤",
     surface: "一个人进了餐厅，点了一碗汤，然后哭了。",
     truth: "汤让他想起了过去的事故。",
+    solutionPoints: ["汤和过去事故有关", "玩家需要确认情绪原因"],
     difficulty: "easy",
     tags: [],
     author: "测试主持",
@@ -40,10 +41,11 @@ afterEach(() => {
 
 describe("parseHostResponse", () => {
   it("parses structured host JSON", () => {
-    const result = parseHostResponse('{"answerType":"yes","answer":"是。这个方向有帮助。"}');
+    const result = parseHostResponse('{"answerType":"yes","answer":"是。这个方向有帮助。","progress":35}');
     expect(result).toEqual({
       answerType: "yes",
-      answer: "是。这个方向有帮助。"
+      answer: "是。这个方向有帮助。",
+      progress: 35
     });
   });
 
@@ -51,12 +53,32 @@ describe("parseHostResponse", () => {
     const result = parseHostResponse("也许有关，但不能直接确认。");
     expect(result.answerType).toBe("partial");
     expect(result.answer).toContain("也许有关");
+    expect(result.progress).toBe(0);
   });
 
   it("rejects unknown answer types", () => {
-    const result = parseHostResponse('{"answerType":"maybe","answer":"不知道"}');
+    const result = parseHostResponse('{"answerType":"maybe","answer":"不知道","progress":200}');
     expect(result.answerType).toBe("partial");
     expect(result.answer).toBe("不知道");
+    expect(result.progress).toBe(100);
+  });
+
+  it("defaults missing progress to zero", () => {
+    const result = parseHostResponse('{"answerType":"no","answer":"不是。"}');
+    expect(result).toEqual({
+      answerType: "no",
+      answer: "不是。",
+      progress: 0
+    });
+  });
+
+  it("keeps valid answer type when progress needs normalization", () => {
+    const result = parseHostResponse('{"answerType":"yes","answer":"是。","progress":"42"}');
+    expect(result).toEqual({
+      answerType: "yes",
+      answer: "是。",
+      progress: 42
+    });
   });
 });
 
@@ -77,7 +99,8 @@ describe("askHost", () => {
 
     await expect(askHost(askHostInput)).resolves.toEqual({
       answerType: "yes",
-      answer: "是。"
+      answer: "是。",
+      progress: 0
     });
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
@@ -107,7 +130,8 @@ describe("askHost", () => {
 
     await expect(askHost(askHostInput)).resolves.toEqual({
       answerType: "no",
-      answer: "不是。"
+      answer: "不是。",
+      progress: 0
     });
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
@@ -127,7 +151,8 @@ describe("askHost", () => {
 
     await expect(askHost(askHostInput)).resolves.toEqual({
       answerType: "partial",
-      answer: "汤仙人暂时走神了，请稍后重试。"
+      answer: "汤仙人暂时走神了，请稍后重试。",
+      progress: 0
     });
   });
 
@@ -140,7 +165,8 @@ describe("askHost", () => {
 
     await expect(askHost(askHostInput)).resolves.toEqual({
       answerType: "partial",
-      answer: "汤仙人暂时走神了，请稍后重试。"
+      answer: "汤仙人暂时走神了，请稍后重试。",
+      progress: 0
     });
   });
 });

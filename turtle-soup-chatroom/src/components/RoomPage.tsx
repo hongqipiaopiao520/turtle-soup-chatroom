@@ -21,7 +21,7 @@ export function RoomPage({
 }) {
   const inviteUrl = `${window.location.origin}?room=${room.id}`;
   const [copied, setCopied] = useState(false);
-  const statusLabel = room.status === "solved" ? "已解出" : "进行中";
+  const statusLabel = room.answerUnlocked ? "汤底已解锁" : "进行中";
 
   async function copyInvite() {
     try {

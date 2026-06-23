@@ -4,11 +4,13 @@ import type {
   HostAnswer,
   Player,
   Puzzle,
+  RoomSettlement,
   RoomSession,
   RoomState
 } from "../src/shared/types";
 
 const rooms = new Map<string, RoomState>();
+const ANSWER_UNLOCK_PROGRESS = 95;
 
 function id(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
@@ -34,6 +36,64 @@ function requirePlayer(room: RoomState, playerId: string) {
   return player;
 }
 
+function clampProgress(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function normalizePlayer(player: Player): Player {
+  return {
+    ...player,
+    score: player.score ?? 0,
+    hits: player.hits ?? 0,
+    bestDelta: player.bestDelta ?? 0
+  };
+}
+
+function normalizePuzzle(puzzle: Puzzle): Puzzle {
+  return {
+    ...puzzle,
+    solutionPoints: puzzle.solutionPoints ?? []
+  };
+}
+
+function normalizeHostAnswer(answer: HostAnswer): HostAnswer {
+  return {
+    ...answer,
+    progress: answer.progress ?? 0,
+    progressDelta: answer.progressDelta ?? 0,
+    contributionScore: answer.contributionScore ?? 0,
+    isBreakthrough: answer.isBreakthrough ?? false
+  };
+}
+
+function normalizeRoom(room: RoomState): RoomState {
+  return {
+    ...room,
+    puzzle: normalizePuzzle(room.puzzle),
+    players: room.players.map(normalizePlayer),
+    hostLog: room.hostLog.map(normalizeHostAnswer),
+    progress: room.progress ?? 0,
+    answerUnlocked: room.answerUnlocked ?? room.status === "solved",
+    truthRevealed: room.truthRevealed ?? false
+  };
+}
+
+function contributionScore(progressDelta: number, crossedUnlock: boolean) {
+  return progressDelta * 10 + (progressDelta >= 20 ? 50 : 0) + (crossedUnlock ? 80 : 0);
+}
+
+function calculateSettlement(room: RoomState, unlockingPlayerId?: string): RoomSettlement {
+  const mvp = [...room.players].sort((a, b) => b.score - a.score)[0];
+  const bestAnswer = [...room.hostLog].sort((a, b) => b.progressDelta - a.progressDelta)[0];
+
+  return {
+    mvpPlayerId: mvp?.id,
+    bestAnswerId: bestAnswer?.id,
+    unlockingPlayerId: room.settlement?.unlockingPlayerId ?? unlockingPlayerId
+  };
+}
+
 export function resetRooms() {
   rooms.clear();
 }
@@ -49,12 +109,14 @@ export function exportRoomsSnapshot() {
 export function importRoomsSnapshot(nextRooms: RoomState[]) {
   rooms.clear();
   for (const room of nextRooms) {
-    rooms.set(room.id, room);
+    const normalized = normalizeRoom(room);
+    rooms.set(normalized.id, normalized);
   }
 }
 
 export function getRoom(roomId: string) {
-  return rooms.get(roomId);
+  const room = rooms.get(roomId);
+  return room ? normalizeRoom(room) : undefined;
 }
 
 export function createRoom(puzzle: Puzzle, hostName: string): RoomSession {
@@ -62,7 +124,10 @@ export function createRoom(puzzle: Puzzle, hostName: string): RoomSession {
     id: id("player"),
     name: hostName.trim() || "访客",
     isHost: true,
-    joinedAt: now()
+    joinedAt: now(),
+    score: 0,
+    hits: 0,
+    bestDelta: 0
   };
 
   const room: RoomState = {
@@ -75,6 +140,9 @@ export function createRoom(puzzle: Puzzle, hostName: string): RoomSession {
     caseNotes: [],
     questionLimit: 20,
     questionsUsed: 0,
+    progress: 0,
+    answerUnlocked: false,
+    truthRevealed: false,
     createdAt: now()
   };
 
@@ -92,7 +160,10 @@ export function joinRoom(roomId: string, playerName: string): RoomSession {
     id: id("player"),
     name: playerName.trim() || "访客",
     isHost: false,
-    joinedAt: now()
+    joinedAt: now(),
+    score: 0,
+    hits: 0,
+    bestDelta: 0
   };
 
   room.players.push(player);
@@ -130,29 +201,48 @@ export function addChatMessage(roomId: string, playerId: string, body: string): 
 
 export function addHostAnswer(
   roomId: string,
-  answer: Omit<HostAnswer, "id" | "createdAt" | "pinned">
+  answer: Omit<HostAnswer, "id" | "createdAt" | "pinned" | "progressDelta" | "contributionScore" | "isBreakthrough">
 ): HostAnswer {
   const room = requireRoom(roomId);
+  const player = requirePlayer(room, answer.playerId);
   if (room.status === "solved") {
     throw new Error("本局已结束");
   }
-  if (room.questionsUsed >= room.questionLimit && answer.answerType !== "solved") {
+  if (room.questionsUsed >= room.questionLimit && answer.answerType !== "solved" && answer.answerType !== "unsolved") {
     throw new Error("提问次数已用完");
   }
+
+  const previousProgress = room.progress;
+  const nextProgress = Math.max(previousProgress, clampProgress(answer.progress));
+  const progressDelta = nextProgress - previousProgress;
+  const crossedUnlock = previousProgress < ANSWER_UNLOCK_PROGRESS && nextProgress >= ANSWER_UNLOCK_PROGRESS;
+  const score = contributionScore(progressDelta, crossedUnlock);
 
   const item: HostAnswer = {
     ...answer,
     id: id("answer"),
+    progress: nextProgress,
+    progressDelta,
+    contributionScore: score,
+    isBreakthrough: progressDelta >= 20 || crossedUnlock,
     pinned: false,
     createdAt: now()
   };
 
   room.hostLog.push(item);
+  room.progress = nextProgress;
+  player.score += score;
+  if (progressDelta > 0) {
+    player.hits += 1;
+    player.bestDelta = Math.max(player.bestDelta, progressDelta);
+  }
   if (answer.answerType !== "solved" && answer.answerType !== "unsolved") {
     room.questionsUsed += 1;
   }
-  if (answer.answerType === "solved") {
+  if (answer.answerType === "solved" || room.progress >= ANSWER_UNLOCK_PROGRESS) {
+    room.answerUnlocked = true;
     room.status = "solved";
+    room.settlement = calculateSettlement(room, crossedUnlock ? answer.playerId : undefined);
   }
   return item;
 }
