@@ -42,6 +42,17 @@ export function listRooms() {
   return Array.from(rooms.values());
 }
 
+export function exportRoomsSnapshot() {
+  return listRooms();
+}
+
+export function importRoomsSnapshot(nextRooms: RoomState[]) {
+  rooms.clear();
+  for (const room of nextRooms) {
+    rooms.set(room.id, room);
+  }
+}
+
 export function getRoom(roomId: string) {
   return rooms.get(roomId);
 }

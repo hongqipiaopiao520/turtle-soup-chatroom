@@ -1,10 +1,12 @@
 import type { Server, Socket } from "socket.io";
 import { seedPuzzles } from "../src/data/seedPuzzles";
 import { askHost } from "./aiHost";
+import { savePersistedRooms } from "./roomPersistence";
 import {
   addChatMessage,
   addHostAnswer,
   createRoom,
+  exportRoomsSnapshot,
   getRoom,
   joinRoom,
   pinAnswer,
@@ -18,6 +20,10 @@ function emitError(socket: Socket, error: unknown) {
   });
 }
 
+function persistRooms() {
+  savePersistedRooms(exportRoomsSnapshot());
+}
+
 export function registerSocketHandlers(io: Server) {
   io.on("connection", (socket) => {
     socket.on("room:create", ({ puzzleId, playerName }) => {
@@ -27,6 +33,7 @@ export function registerSocketHandlers(io: Server) {
         const session = createRoom(puzzle, playerName);
         const { room } = session;
         socket.join(room.id);
+        persistRooms();
         socket.emit("room:session", session);
       } catch (error) {
         emitError(socket, error);
@@ -38,6 +45,7 @@ export function registerSocketHandlers(io: Server) {
         const session = joinRoom(roomId, playerName);
         const { room } = session;
         socket.join(room.id);
+        persistRooms();
         socket.emit("room:session", session);
         io.to(room.id).emit("room:state", room);
       } catch (error) {
@@ -59,7 +67,10 @@ export function registerSocketHandlers(io: Server) {
       try {
         addChatMessage(roomId, playerId, body);
         const room = getRoom(roomId);
-        if (room) io.to(room.id).emit("room:state", room);
+        if (room) {
+          persistRooms();
+          io.to(room.id).emit("room:state", room);
+        }
       } catch (error) {
         emitError(socket, error);
       }
@@ -91,7 +102,10 @@ export function registerSocketHandlers(io: Server) {
         });
 
         const updated = getRoom(roomId);
-        if (updated) io.to(updated.id).emit("room:state", updated);
+        if (updated) {
+          persistRooms();
+          io.to(updated.id).emit("room:state", updated);
+        }
       } catch (error) {
         emitError(socket, error);
       }
@@ -100,6 +114,7 @@ export function registerSocketHandlers(io: Server) {
     socket.on("case:pin", ({ roomId, answerId }) => {
       try {
         const room = pinAnswer(roomId, answerId);
+        persistRooms();
         io.to(room.id).emit("room:state", room);
       } catch (error) {
         emitError(socket, error);
@@ -109,6 +124,7 @@ export function registerSocketHandlers(io: Server) {
     socket.on("room:leave", ({ roomId, playerId }) => {
       try {
         const room = removePlayer(roomId, playerId);
+        persistRooms();
         io.to(room.id).emit("room:state", room);
       } catch (error) {
         emitError(socket, error);

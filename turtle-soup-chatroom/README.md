@@ -35,6 +35,10 @@ PORT=8787
 
 Without either set of values, the host panel returns a configuration warning instead of calling a model.
 
+## Local Room Persistence
+
+Rooms are persisted locally to `data/rooms.json` while the dev server runs. The `data/` directory is git-ignored, so local playtest rooms stay on your machine and are not committed.
+
 ## MVP Checks
 
 - Homepage shows seed puzzle cards.

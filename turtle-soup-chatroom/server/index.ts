@@ -3,9 +3,12 @@ import http from "node:http";
 import { Server } from "socket.io";
 import { seedPuzzles } from "../src/data/seedPuzzles";
 import { loadLocalEnv } from "./env";
+import { loadPersistedRooms } from "./roomPersistence";
+import { importRoomsSnapshot } from "./roomStore";
 import { registerSocketHandlers } from "./socketHandlers";
 
 loadLocalEnv();
+importRoomsSnapshot(loadPersistedRooms());
 
 const app = express();
 const server = http.createServer(app);

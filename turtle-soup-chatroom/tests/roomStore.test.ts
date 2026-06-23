@@ -4,7 +4,9 @@ import {
   addChatMessage,
   addHostAnswer,
   createRoom,
+  exportRoomsSnapshot,
   getRoom,
+  importRoomsSnapshot,
   joinRoom,
   pinAnswer,
   rejoinRoom,
@@ -61,5 +63,21 @@ describe("roomStore", () => {
     const updated = pinAnswer(room.id, answer.id);
     expect(updated.caseNotes[0].body).toContain("女孩真的消失了吗？");
     expect(getRoom(room.id)?.hostLog[0].pinned).toBe(true);
+  });
+
+  it("exports and imports room snapshots for persistence", () => {
+    const { room, playerId } = createRoom(seedPuzzles[1], "房主");
+    addChatMessage(room.id, playerId, "这条消息应该被保存");
+
+    const snapshot = exportRoomsSnapshot();
+    resetRooms();
+    expect(getRoom(room.id)).toBeUndefined();
+
+    importRoomsSnapshot(snapshot);
+    const restored = rejoinRoom(room.id, playerId);
+
+    expect(restored.room.id).toBe(room.id);
+    expect(restored.playerId).toBe(playerId);
+    expect(restored.room.chatMessages[0].body).toBe("这条消息应该被保存");
   });
 });
