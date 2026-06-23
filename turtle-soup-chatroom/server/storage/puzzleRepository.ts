@@ -1,6 +1,22 @@
 import type { AppDatabase } from "./database";
 import type { Difficulty, ManagedPuzzle, Puzzle, PuzzleStatus } from "../../src/shared/types";
 
+export interface ManagedPuzzleUpdate {
+  title: string;
+  surface: string;
+  truth: string;
+  solutionPoints: string[];
+  difficulty: Difficulty;
+  tags: string[];
+  rawText?: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
+  hints: string[];
+  qualityScore: number;
+  qualityIssues: string[];
+  qualitySummary: string;
+}
+
 interface PuzzleRow {
   id: string;
   title: string;
@@ -32,6 +48,7 @@ export interface PuzzleRepository {
   listPublished(): Puzzle[];
   listManaged(status?: PuzzleStatus): ManagedPuzzle[];
   upsertManaged(puzzle: ManagedPuzzle): ManagedPuzzle;
+  updateManaged(id: string, input: ManagedPuzzleUpdate): ManagedPuzzle;
   publish(id: string): ManagedPuzzle;
   reject(id: string): ManagedPuzzle;
 }
@@ -94,6 +111,15 @@ function requirePuzzle(puzzle: ManagedPuzzle | undefined, id: string) {
     throw new Error(`题目不存在：${id}`);
   }
   return puzzle;
+}
+
+function nextTimestampAfter(value: string) {
+  const now = new Date();
+  const previousTime = Date.parse(value);
+  if (Number.isFinite(previousTime) && now.getTime() <= previousTime) {
+    return new Date(previousTime + 1).toISOString();
+  }
+  return now.toISOString();
 }
 
 export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
@@ -216,6 +242,26 @@ export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
         updatedAt: puzzle.updatedAt
       });
       return requirePuzzle(findById(puzzle.id), puzzle.id);
+    },
+    updateManaged(id: string, input: ManagedPuzzleUpdate) {
+      const existing = requirePuzzle(findById(id), id);
+      return this.upsertManaged({
+        ...existing,
+        title: input.title,
+        surface: input.surface,
+        truth: input.truth,
+        solutionPoints: input.solutionPoints,
+        difficulty: input.difficulty,
+        tags: input.tags,
+        rawText: input.rawText,
+        sourceUrl: input.sourceUrl,
+        sourceTitle: input.sourceTitle,
+        hints: input.hints,
+        qualityScore: input.qualityScore,
+        qualityIssues: input.qualityIssues,
+        qualitySummary: input.qualitySummary,
+        updatedAt: nextTimestampAfter(existing.updatedAt)
+      });
     },
     publish(id: string) {
       const now = new Date().toISOString();

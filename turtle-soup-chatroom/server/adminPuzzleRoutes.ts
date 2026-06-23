@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import type { ManagedPuzzle, PuzzleStatus } from "../src/shared/types";
 import { createFallbackDraft, importPuzzleFromText } from "./puzzleImporter";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
@@ -8,6 +9,22 @@ interface ImportTextInput {
   sourceUrl?: string;
   sourceTitle?: string;
 }
+
+const AdminPuzzleUpdateSchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  surface: z.string().trim().min(1).max(500),
+  truth: z.string().trim().min(1).max(2000),
+  solutionPoints: z.array(z.string().trim().min(1)).min(1).max(12),
+  hints: z.array(z.string().trim().min(1)).max(10).default([]),
+  difficulty: z.enum(["easy", "medium", "hard"]),
+  tags: z.array(z.string().trim().min(1)).max(10).default([]),
+  qualityScore: z.number().min(0).max(100),
+  qualityIssues: z.array(z.string().trim().min(1)).max(16).default([]),
+  qualitySummary: z.string().trim().max(500).default(""),
+  sourceTitle: z.string().trim().max(160).optional(),
+  sourceUrl: z.string().trim().url().optional().or(z.literal("")),
+  rawText: z.string().trim().max(10000).optional()
+});
 
 export function isAdminRequestAuthorized(authorizationHeader: string | undefined) {
   const token = process.env.ADMIN_TOKEN;
@@ -34,6 +51,14 @@ export function publishAdminPuzzle(repository: PuzzleRepository, puzzleId: strin
 
 export function rejectAdminPuzzle(repository: PuzzleRepository, puzzleId: string) {
   return repository.reject(puzzleId);
+}
+
+export function updateAdminPuzzle(repository: PuzzleRepository, puzzleId: string, input: unknown) {
+  const parsed = AdminPuzzleUpdateSchema.parse(input);
+  return repository.updateManaged(puzzleId, {
+    ...parsed,
+    sourceUrl: parsed.sourceUrl || undefined
+  });
 }
 
 export function createAdminPuzzleRouter(repository: PuzzleRepository) {
@@ -73,6 +98,14 @@ export function createAdminPuzzleRouter(repository: PuzzleRepository) {
 
   router.post("/puzzles/:id/reject", (request, response) => {
     response.json(rejectAdminPuzzle(repository, request.params.id));
+  });
+
+  router.put("/puzzles/:id", (request, response) => {
+    try {
+      response.json(updateAdminPuzzle(repository, request.params.id, request.body));
+    } catch (error) {
+      response.status(400).json({ message: error instanceof Error ? error.message : "题目更新失败" });
+    }
   });
 
   return router;

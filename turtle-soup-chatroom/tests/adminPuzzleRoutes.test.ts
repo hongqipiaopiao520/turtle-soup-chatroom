@@ -3,7 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { seedPuzzles } from "../src/data/seedPuzzles";
-import { importTextDraft, importTextWithAi, isAdminRequestAuthorized, listAdminPuzzles, publishAdminPuzzle, rejectAdminPuzzle } from "../server/adminPuzzleRoutes";
+import {
+  importTextDraft,
+  importTextWithAi,
+  isAdminRequestAuthorized,
+  listAdminPuzzles,
+  publishAdminPuzzle,
+  rejectAdminPuzzle,
+  updateAdminPuzzle
+} from "../server/adminPuzzleRoutes";
 import { openDatabase } from "../server/storage/database";
 import { createPuzzleRepository } from "../server/storage/puzzleRepository";
 
@@ -115,6 +123,34 @@ describe("admin puzzle helpers", () => {
     expect(listAdminPuzzles(repository, "draft")).toEqual([]);
     expect(listAdminPuzzles(repository, "published").map((puzzle) => puzzle.id)).toContain(first.id);
     expect(listAdminPuzzles(repository)).toHaveLength(3);
+    db.close();
+  });
+
+  it("updates editable puzzle fields without changing status", () => {
+    const { db, repository } = makeRepository();
+    const draft = importTextDraft(repository, { rawText: "旧标题\n旧汤面" });
+
+    const updated = updateAdminPuzzle(repository, draft.id, {
+      title: "新标题",
+      surface: "新的汤面",
+      truth: "新的汤底",
+      solutionPoints: ["关键点一", "关键点二"],
+      hints: ["提示一"],
+      difficulty: "hard",
+      tags: ["本格", "测试"],
+      qualityScore: 82,
+      qualityIssues: ["需要人工复核"],
+      qualitySummary: "结构完整",
+      sourceTitle: "来源名",
+      sourceUrl: "https://example.test/puzzle",
+      rawText: "原始文本"
+    });
+
+    expect(updated.status).toBe("draft");
+    expect(updated.title).toBe("新标题");
+    expect(updated.solutionPoints).toEqual(["关键点一", "关键点二"]);
+    expect(updated.tags).toEqual(["本格", "测试"]);
+    expect(updated.updatedAt).not.toBe(draft.updatedAt);
     db.close();
   });
 });
