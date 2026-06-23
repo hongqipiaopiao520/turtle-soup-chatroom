@@ -8,6 +8,7 @@
     "server": "tsx watch server/index.ts",
     "backup:sqlite": "node scripts/backup-sqlite.mjs",
     "collect:puzzles": "node scripts/collect-puzzles.mjs",
+    "import:puzzles-md": "tsx scripts/import-puzzles-md.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "tsc --noEmit && vite build"
