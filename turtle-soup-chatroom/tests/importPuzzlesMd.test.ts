@@ -70,6 +70,24 @@ describe("markdown puzzle import", () => {
     expect(puzzle.tags).toContain("许二木");
   });
 
+  it("splits long truth text into short atomic solution points", () => {
+    const puzzle = convertMarkdownRowToPuzzle({
+      index: 1,
+      title: "妹妹的房间",
+      surface: "妹妹的房间传来很多球鞋摩擦地板的声音，房门虚掩着，我开门看了一眼，妹妹空洞的眼神正望着我，我急忙去叫保安，结果我死了",
+      truth: "妹妹的头七，我去坟前扫墓，却听到棺材里传来运动鞋摩擦地板的声音，我感到很奇怪，挖开妹妹的坟墓看了一下，发现妹妹的棺椁被人打开了，里面躲着密密麻麻的老鼠，而妹妹的尸体也被老鼠啃食的面目全非。吓得我急忙去叫保安。原来保安有恋尸癖，他作案之后没有给妹妹的棺材盖好，才导致老鼠顺着缝隙钻进棺材里，保安担心事情败露，便把我也鲨了",
+      sourceTitle: "许二木S2-1",
+      sourceUrl: "https://example.test/source"
+    });
+
+    expect(puzzle.solutionPoints).toContain("妹妹已经死亡");
+    expect(puzzle.solutionPoints).toContain("棺材被人打开");
+    expect(puzzle.solutionPoints).toContain("保安有恋尸癖");
+    expect(puzzle.solutionPoints).toContain("叙述者被杀死");
+    expect(puzzle.solutionPoints).toHaveLength(8);
+    expect(puzzle.solutionPoints.every((point) => point.length <= 18)).toBe(true);
+  });
+
   it("imports parsed rows into a sqlite review queue", () => {
     const db = openDatabase(makeDbPath());
     const repository = createPuzzleRepository(db);

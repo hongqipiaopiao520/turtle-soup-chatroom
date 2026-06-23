@@ -83,12 +83,62 @@ function makeId(row) {
   return `md-${row.index}-${pinyinishSlug(row.title)}`;
 }
 
-function sentences(value) {
+function addPoint(points, point) {
+  const normalized = point.trim();
+  if (!normalized || normalized.length > 18 || points.includes(normalized)) return;
+  points.push(normalized);
+}
+
+function templatePoints(row) {
+  const text = `${row.surface}\n${row.truth}`;
+  const points = [];
+
+  if (/妹妹[^。；，,]*头七|妹妹[^。；，,]*(尸体|坟|棺)/.test(text)) addPoint(points, "妹妹已经死亡");
+  if (/摩擦地板|摩擦/.test(text)) addPoint(points, "棺内传出摩擦声");
+  if (/棺材[^。；]*打开|棺椁[^。；]*打开|打开了/.test(text)) addPoint(points, "棺材被人打开");
+  if (/老鼠/.test(text)) addPoint(points, "棺内钻入老鼠");
+  if (/尸体[^。；]*(啃|面目全非)|啃食/.test(text)) addPoint(points, "尸体被老鼠啃食");
+  if (/保安[^。；]*(恋尸癖)|恋尸癖/.test(text)) addPoint(points, "保安有恋尸癖");
+  if (/保安[^。；]*(担心|败露)/.test(text)) addPoint(points, "保安担心败露");
+  if (/(把我也|我也).{0,6}(鲨|杀)|结果我死了/.test(text)) addPoint(points, "叙述者被杀死");
+  if (/头七/.test(text)) addPoint(points, "事件发生在头七");
+  if (/扫墓|坟前|坟墓/.test(text)) addPoint(points, "叙述者去扫墓");
+  if (/棺材|棺椁/.test(text)) addPoint(points, "异常来自棺材");
+
+  return points;
+}
+
+function cleanPointCandidate(value) {
   return value
-    .split(/[。！？!?；;\n]/)
-    .map((item) => item.trim())
-    .filter((item) => item.length >= 4)
-    .slice(0, 6);
+    .replace(/^(原来|于是|然后|随后|结果|因为|所以|然而|没想到|吓得)/, "")
+    .replace(/^(我|他|她|他们|我们)(发现|知道|意识到)/, "")
+    .replace(/[“”"']/g, "")
+    .trim();
+}
+
+function splitClausePoints(value) {
+  return value
+    .split(/[。！？!?；;\n，,]/)
+    .map(cleanPointCandidate)
+    .filter((item) => item.length >= 5 && item.length <= 18)
+    .filter((item) => !/广告|查看详情|送礼物|发布于|编辑于/.test(item));
+}
+
+function solutionPointsFor(row) {
+  const points = templatePoints(row);
+  for (const item of splitClausePoints(row.truth)) {
+    addPoint(points, item);
+    if (points.length >= 8) break;
+  }
+
+  if (points.length < 4) {
+    for (const item of splitClausePoints(row.surface)) {
+      addPoint(points, item);
+      if (points.length >= 4) break;
+    }
+  }
+
+  return points.slice(0, 8);
 }
 
 function difficultyFor(row) {
@@ -141,7 +191,7 @@ export function convertMarkdownRowToPuzzle(row, status = "reviewing") {
     title: row.title,
     surface: row.surface,
     truth: row.truth,
-    solutionPoints: sentences(row.truth),
+    solutionPoints: solutionPointsFor(row),
     difficulty: difficultyFor(row),
     tags: tagsFor(row),
     author: row.sourceTitle || "Markdown 导入",
