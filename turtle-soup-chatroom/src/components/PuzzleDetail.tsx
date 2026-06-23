@@ -38,7 +38,7 @@ export function PuzzleDetail({
             <Play size={16} /> 开始游戏
           </button>
         </div>
-        <h2>🍜 汤面</h2>
+        <span className="panel-kicker">汤面</span>
         <p className="surface-text">{puzzle.surface}</p>
         <div className="stats-grid">
           <span><Star size={16} /> {puzzle.rating.toFixed(1)} / 10</span>

@@ -73,8 +73,8 @@ export function HomePage({
           ))}
         </div>
         <aside className="activity-panel">
-          <h2><Users size={18} /> 茶水间</h2>
-          <p>初版先聚焦房间推理。社区动态、排行榜和任务系统会放到后续版本。</p>
+          <h2><Users size={18} /> 今夜案台</h2>
+          <p>先选一碗汤，进房间轮流逼近真相。完成度到 95% 后，会统一弹出汤底和本局结算。</p>
         </aside>
       </section>
     </main>
