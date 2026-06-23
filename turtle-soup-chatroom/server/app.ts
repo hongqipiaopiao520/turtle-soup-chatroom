@@ -1,4 +1,5 @@
 import express from "express";
+import { createAdminPuzzleRouter } from "./adminPuzzleRoutes";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
 
 export function listPublicPuzzles(puzzleRepository: PuzzleRepository) {
@@ -16,6 +17,8 @@ export function createApp(puzzleRepository: PuzzleRepository) {
   app.get("/api/puzzles", (_request, response) => {
     response.json(listPublicPuzzles(puzzleRepository));
   });
+
+  app.use("/api/admin", createAdminPuzzleRouter(puzzleRepository));
 
   return app;
 }
