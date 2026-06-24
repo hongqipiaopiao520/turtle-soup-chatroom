@@ -113,6 +113,27 @@ Markdown imports do not call the LLM. They reuse the existing `汤面` and `汤�
 
 ## Single-Server Deploy
 
+Recommended one-command deploy on the server:
+
+```bash
+cd /www/wwwroot/turtle-soup-chatroom/turtle-soup-chatroom
+npm run deploy:server
+```
+
+Useful overrides:
+
+```bash
+DEPLOY_BRANCH=main npm run deploy:server
+SKIP_GIT_PULL=1 npm run deploy:server
+HEALTH_URL=http://127.0.0.1:8787/api/health npm run deploy:server
+```
+
+The deploy script requires a clean working tree and an existing production `.env`.
+It pulls latest code, runs `npm ci --include=dev`, builds the app, creates `data/`
+and `logs/`, restarts PM2, saves the PM2 process list, and checks `/api/health`.
+
+Manual deploy:
+
 ```bash
 npm install
 npm run build
