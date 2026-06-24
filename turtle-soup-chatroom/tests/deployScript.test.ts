@@ -44,7 +44,9 @@ describe("server deploy script", () => {
     expect(script).toContain("SYNC_DIST_TO_HOST");
     expect(script).toContain("sync_dist_to_host()");
     expect(script).toContain("cleanup_deploy_artifacts()");
-    expect(script).toContain("rm -rf \"$APP_ROOT/dist.next\" \"$APP_ROOT/dist.previous\"");
+    expect(script).toContain("remove_path_safely()");
+    expect(script).toContain("chattr -i \"$protected_file\"");
+    expect(script).toContain("find \"$target\" -name .user.ini -type f");
     expect(script).toContain("docker cp \"$APP_NAME:/app/dist/.\" \"$next_dist/\"");
     expect(script).not.toContain("--retry-connrefused");
     expect(script).not.toContain("npm run build");

@@ -45,8 +45,24 @@ check_health() {
   return 1
 }
 
+remove_path_safely() {
+  local target="$1"
+  if [ ! -e "$target" ]; then
+    return
+  fi
+
+  if command -v chattr >/dev/null 2>&1; then
+    while IFS= read -r protected_file; do
+      chattr -i "$protected_file" >/dev/null 2>&1 || true
+    done < <(find "$target" -name .user.ini -type f 2>/dev/null || true)
+  fi
+
+  rm -rf "$target"
+}
+
 cleanup_deploy_artifacts() {
-  rm -rf "$APP_ROOT/dist.next" "$APP_ROOT/dist.previous"
+  remove_path_safely "$APP_ROOT/dist.next"
+  remove_path_safely "$APP_ROOT/dist.previous"
 }
 
 sync_dist_to_host() {
@@ -58,14 +74,15 @@ sync_dist_to_host() {
   local next_dist="$APP_ROOT/dist.next"
   local previous_dist="$APP_ROOT/dist.previous"
   log "syncing built dist from container to host"
-  rm -rf "$next_dist" "$previous_dist"
+  remove_path_safely "$next_dist"
+  remove_path_safely "$previous_dist"
   mkdir -p "$next_dist"
   docker cp "$APP_NAME:/app/dist/." "$next_dist/"
   if [ -d "$APP_ROOT/dist" ]; then
     mv "$APP_ROOT/dist" "$previous_dist"
   fi
   mv "$next_dist" "$APP_ROOT/dist"
-  rm -rf "$previous_dist"
+  remove_path_safely "$previous_dist"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
