@@ -22,9 +22,15 @@ require_command npm
 require_command pm2
 require_command curl
 
+git_in_dir() {
+  local dir="$1"
+  shift
+  (cd "$dir" && git "$@")
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 APP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
-GIT_ROOT="$(git -C "$APP_ROOT" rev-parse --show-toplevel)"
+GIT_ROOT="$(git_in_dir "$APP_ROOT" rev-parse --show-toplevel)"
 cd "$APP_ROOT"
 
 if [ ! -f ".env" ]; then
@@ -32,19 +38,19 @@ if [ ! -f ".env" ]; then
   exit 1
 fi
 
-if [ -n "$(git -C "$GIT_ROOT" status --porcelain -- "$APP_ROOT")" ]; then
+if [ -n "$(git_in_dir "$GIT_ROOT" status --porcelain -- "$APP_ROOT")" ]; then
   echo "[deploy] working tree is not clean; commit or stash changes before deploying." >&2
-  git -C "$GIT_ROOT" status --short -- "$APP_ROOT"
+  git_in_dir "$GIT_ROOT" status --short -- "$APP_ROOT"
   exit 1
 fi
 
 if [ "$SKIP_GIT_PULL" != "1" ]; then
   if [ -n "$DEPLOY_BRANCH" ]; then
     log "checking out $DEPLOY_BRANCH"
-    git checkout "$DEPLOY_BRANCH"
+    git_in_dir "$GIT_ROOT" checkout "$DEPLOY_BRANCH"
   fi
   log "pulling latest code"
-  git -C "$GIT_ROOT" pull --ff-only
+  git_in_dir "$GIT_ROOT" pull --ff-only
 else
   log "skipping git pull"
 fi

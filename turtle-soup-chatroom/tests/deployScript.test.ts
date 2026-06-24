@@ -11,8 +11,9 @@ describe("server deploy script", () => {
     expect(packageJson.scripts?.["deploy:server"]).toBe("bash scripts/deploy-server.sh");
     expect(script).toContain("set -euo pipefail");
     expect(script).toContain("APP_ROOT=");
-    expect(script).toContain("GIT_ROOT=\"$(git -C \"$APP_ROOT\" rev-parse --show-toplevel)\"");
-    expect(script).toContain("git -C \"$GIT_ROOT\" pull --ff-only");
+    expect(script).toContain("git_in_dir()");
+    expect(script).toContain("git_in_dir \"$GIT_ROOT\" pull --ff-only");
+    expect(script).not.toContain("git -C");
     expect(script).toContain("npm ci --include=dev");
     expect(script).toContain("npm run build");
     expect(script).toContain("pm2 startOrRestart \"$APP_ROOT/ecosystem.config.cjs\" --update-env");
@@ -29,7 +30,9 @@ describe("server deploy script", () => {
     expect(dockerfile).toContain("CMD [\"npm\", \"run\", \"start\"]");
     expect(script).toContain("set -euo pipefail");
     expect(script).toContain("require_command docker");
-    expect(script).toContain("git -C \"$GIT_ROOT\" pull --ff-only");
+    expect(script).toContain("git_in_dir()");
+    expect(script).toContain("git_in_dir \"$GIT_ROOT\" pull --ff-only");
+    expect(script).not.toContain("git -C");
     expect(script).toContain("docker build -t \"$IMAGE_NAME:$IMAGE_TAG\" -f \"$APP_ROOT/Dockerfile\" \"$APP_ROOT\"");
     expect(script).toContain("docker run -d");
     expect(script).toContain("--env-file \"$APP_ROOT/.env\"");
