@@ -55,6 +55,17 @@ describe("AdminPage", () => {
     expect(markup).toContain("支持 .txt/.md/.csv");
   });
 
+  it("uses unified select controls in admin filters and editor fields", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
+    );
+
+    expect(markup).toContain("ui-select");
+    expect(markup).toContain("全部状态");
+    expect(markup).toContain("中等");
+    expect(markup).not.toContain("<select");
+  });
+
   it("formats several batch import failures with row-level reasons", () => {
     expect(formatBatchImportMessage({
       imported: 2,

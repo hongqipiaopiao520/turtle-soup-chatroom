@@ -200,6 +200,21 @@ describe("buildHostPrompt", () => {
     expect(systemPrompt).toContain("不要要求玩家逐字命中关键点");
     expect(userPrompt).toContain("最终推理");
   });
+
+  it("instructs the AI host to score ordinary questions when they confirm key facts", () => {
+    const messages = buildHostPrompt({
+      ...askHostInput,
+      mode: "question",
+      question: "汤和过去事故有关吗？",
+      currentProgress: 20
+    });
+    const systemPrompt = messages[0].content;
+    const userPrompt = messages[1].content;
+
+    expect(systemPrompt).toContain("普通提问如果确认关键事实");
+    expect(systemPrompt).toContain("progress 必须高于当前完成度");
+    expect(userPrompt).toContain("当前完成度：20");
+  });
 });
 
 describe("loadLocalEnv", () => {

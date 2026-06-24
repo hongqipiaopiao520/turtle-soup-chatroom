@@ -42,9 +42,8 @@ export function SidePanel({
         <div className="player-list">
           {room.players.map((player) => (
             <span className="player-pill" key={player.id}>
-              {player.name}
-              {player.id === playerId ? "（你）" : ""}
-              {player.isHost ? " · 发起人" : ""}
+              <span>{player.name}{player.id === playerId ? "（你）" : ""}</span>
+              {player.isHost && <strong className="host-badge">小歪主持</strong>}
             </span>
           ))}
         </div>

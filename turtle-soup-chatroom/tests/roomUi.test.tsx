@@ -195,4 +195,39 @@ describe("room UI settlement", () => {
 
     expect(markup).toContain("小歪正在判定");
   });
+
+  it("uses a segmented control instead of a native select for host mode", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} />
+    );
+
+    expect(markup).toContain("segmented-control");
+    expect(markup).toContain("提问");
+    expect(markup).toContain("推理提交");
+    expect(markup).not.toContain("<select");
+  });
+
+  it("renders a distinctive host badge for the room owner", () => {
+    const room = makeSolvedRoom();
+
+    const markup = renderToStaticMarkup(
+      <SidePanel
+        room={room}
+        playerId="player-host"
+        onOpenSettlement={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    expect(markup).toContain("host-badge");
+    expect(markup).toContain("小歪主持");
+    expect(markup).not.toContain("发起人");
+  });
 });

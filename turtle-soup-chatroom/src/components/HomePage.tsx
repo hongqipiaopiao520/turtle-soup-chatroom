@@ -4,6 +4,7 @@ import type { StoredRoomSession } from "../client/roomSessionMemory";
 import { collectTags, filterPuzzles } from "../shared/puzzleFilters";
 import type { Difficulty, PublicPuzzle, PuzzleSort } from "../shared/types";
 import { PuzzleCard } from "./PuzzleCard";
+import { SelectField } from "./ui";
 
 export function HomePage({
   puzzles: availablePuzzles,
@@ -53,23 +54,36 @@ export function HomePage({
             placeholder="搜索谜题、作者..."
           />
         </label>
-        <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as Difficulty | "all")}>
-          <option value="all">所有难度</option>
-          <option value="easy">简单</option>
-          <option value="medium">中等</option>
-          <option value="hard">困难</option>
-        </select>
-        <select value={tag} onChange={(event) => setTag(event.target.value)}>
-          <option value="all">全部标签</option>
-          {tags.map((item) => (
-            <option value={item} key={item}>{item}</option>
-          ))}
-        </select>
-        <select value={sort} onChange={(event) => setSort(event.target.value as PuzzleSort)}>
-          <option value="hot">热门</option>
-          <option value="latest">最新</option>
-          <option value="rating">评分最高</option>
-        </select>
+        <SelectField
+          value={difficulty}
+          onChange={setDifficulty}
+          ariaLabel="难度筛选"
+          options={[
+            { value: "all", label: "所有难度" },
+            { value: "easy", label: "简单" },
+            { value: "medium", label: "中等" },
+            { value: "hard", label: "困难" }
+          ]}
+        />
+        <SelectField
+          value={tag}
+          onChange={setTag}
+          ariaLabel="标签筛选"
+          options={[
+            { value: "all", label: "全部标签" },
+            ...tags.map((item) => ({ value: item, label: item }))
+          ]}
+        />
+        <SelectField
+          value={sort}
+          onChange={setSort}
+          ariaLabel="排序方式"
+          options={[
+            { value: "hot", label: "热门" },
+            { value: "latest", label: "最新" },
+            { value: "rating", label: "评分最高" }
+          ]}
+        />
       </section>
 
       <section className="home-grid">

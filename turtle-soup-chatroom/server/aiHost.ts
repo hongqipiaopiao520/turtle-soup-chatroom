@@ -102,6 +102,8 @@ export function buildHostPrompt(input: AskHostInput) {
         "你必须严格基于汤底回答，不能编造新事实。",
         "参考标准海龟汤玩法：普通提问 QUERY 只回答方向，最终推理 SOLVE 判断玩家理论是否抓住核心真相。",
         "普通提问只允许 answerType 为 yes、no、irrelevant、partial。",
+        "普通提问如果确认关键事实、排除重大误区或命中关键因果，progress 必须高于当前完成度，并填写 coveredPointIds。",
+        "普通提问即使只回答是/不是，也要根据玩家已经确认的信息给出贡献分所需的 progress；不要只有最终推理才涨分。",
         "推理提交可以使用 answerType solved 或 unsolved。",
         "推理提交不要要求玩家逐字命中关键点；同义表达、合理改写、代词指代和等价因果链都可以视为覆盖。",
         "只要最终推理覆盖主要反转、核心逻辑、关键因果和核心身份/动机，即使遗漏少量细节，也应判为 solved，progress 给 100。",

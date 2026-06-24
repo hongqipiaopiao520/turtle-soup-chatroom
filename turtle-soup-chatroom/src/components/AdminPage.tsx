@@ -11,6 +11,7 @@ import {
 } from "../client/adminPuzzles";
 import { parsePuzzleFileContent, type ParsedPuzzleFileItem } from "../client/puzzleFileImport";
 import type { Difficulty, ManagedPuzzle, PuzzleStatus } from "../shared/types";
+import { SelectField } from "./ui";
 
 type AdminStatusFilter = PuzzleStatus | "all";
 
@@ -240,13 +241,18 @@ export function AdminPage({
               type="password"
             />
           </label>
-          <select value={status} onChange={(event) => setStatus(event.target.value as AdminStatusFilter)}>
-            <option value="all">全部状态</option>
-            <option value="draft">草稿</option>
-            <option value="reviewing">待审核</option>
-            <option value="published">已发布</option>
-            <option value="rejected">已驳回</option>
-          </select>
+          <SelectField
+            value={status}
+            onChange={setStatus}
+            ariaLabel="审核状态"
+            options={[
+              { value: "all", label: "全部状态" },
+              { value: "draft", label: "草稿" },
+              { value: "reviewing", label: "待审核" },
+              { value: "published", label: "已发布" },
+              { value: "rejected", label: "已驳回" }
+            ]}
+          />
           <button className="ghost-button" type="button" onClick={loadPuzzles} disabled={isBusy}>
             <RefreshCw size={16} /> 刷新
           </button>
@@ -346,11 +352,16 @@ export function AdminPage({
               <input value={draft.title} onChange={(event) => setDraftField(setDraft, "title", event.target.value)} />
             </AdminField>
             <AdminField label="难度">
-              <select value={draft.difficulty} onChange={(event) => setDraftField(setDraft, "difficulty", event.target.value as Difficulty)}>
-                <option value="easy">简单</option>
-                <option value="medium">中等</option>
-                <option value="hard">困难</option>
-              </select>
+              <SelectField
+                value={draft.difficulty}
+                onChange={(value) => setDraftField(setDraft, "difficulty", value)}
+                ariaLabel="题目难度"
+                options={[
+                  { value: "easy", label: "简单" },
+                  { value: "medium", label: "中等" },
+                  { value: "hard", label: "困难" }
+                ]}
+              />
             </AdminField>
             <AdminField label="质量评分">
               <input value={draft.qualityScore} onChange={(event) => setDraftField(setDraft, "qualityScore", event.target.value)} type="number" min="0" max="100" />

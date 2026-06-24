@@ -30,4 +30,16 @@ describe("HomePage", () => {
     expect(markup).toContain("继续上次房间");
     expect(markup).toContain("冷掉的水");
   });
+
+  it("uses unified select controls for filters", () => {
+    const markup = renderToStaticMarkup(
+      <HomePage puzzles={[]} onOpenPuzzle={() => undefined} onRandomPuzzle={() => undefined} />
+    );
+
+    expect(markup).toContain("ui-select");
+    expect(markup).toContain("所有难度");
+    expect(markup).toContain("全部标签");
+    expect(markup).toContain('aria-label="排序方式"');
+    expect(markup).not.toContain("<select");
+  });
 });

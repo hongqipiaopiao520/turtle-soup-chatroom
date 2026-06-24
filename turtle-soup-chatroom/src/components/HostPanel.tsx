@@ -1,6 +1,7 @@
 import { Pin, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { RoomState } from "../shared/types";
+import { SegmentedControl } from "./ui";
 
 export function HostPanel({
   room,
@@ -64,7 +65,7 @@ export function HostPanel({
                 <p>{item.question}</p>
               </div>
               <div className="answer-line">
-                <span className="line-label">小歪</span>
+                <span className="line-label host-line-label">小歪</span>
                 <p>{item.answer}</p>
               </div>
               <div className="answer-card-foot">
@@ -97,10 +98,16 @@ export function HostPanel({
         </p>
       )}
       <div className="ask-box">
-        <select value={mode} onChange={(event) => setMode(event.target.value as "question" | "guess")}>
-          <option value="question">提问</option>
-          <option value="guess">推理提交</option>
-        </select>
+        <SegmentedControl
+          value={mode}
+          onChange={setMode}
+          ariaLabel="问答模式"
+          disabled={isHostPending || isSolved}
+          options={[
+            { value: "question", label: "提问" },
+            { value: "guess", label: "推理提交" }
+          ]}
+        />
         <textarea
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
