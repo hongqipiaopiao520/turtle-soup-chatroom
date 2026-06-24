@@ -41,6 +41,9 @@ describe("server deploy script", () => {
     expect(script).toContain("docker rename \"$APP_NAME\" \"$BACKUP_CONTAINER\"");
     expect(script).toContain("check_health()");
     expect(script).toContain("curl -fsS \"$HEALTH_URL\"");
+    expect(script).toContain("SYNC_DIST_TO_HOST");
+    expect(script).toContain("sync_dist_to_host()");
+    expect(script).toContain("docker cp \"$APP_NAME:/app/dist/.\" \"$next_dist/\"");
     expect(script).not.toContain("--retry-connrefused");
     expect(script).not.toContain("npm run build");
   });

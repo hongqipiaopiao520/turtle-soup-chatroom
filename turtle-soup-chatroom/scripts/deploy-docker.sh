@@ -9,6 +9,7 @@ HOST_PORT="${HOST_PORT:-8787}"
 CONTAINER_PORT="${CONTAINER_PORT:-8787}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${HOST_PORT}/api/health}"
 SKIP_GIT_PULL="${SKIP_GIT_PULL:-0}"
+SYNC_DIST_TO_HOST="${SYNC_DIST_TO_HOST:-1}"
 
 log() {
   printf '\n[deploy:docker] %s\n' "$1"
@@ -42,6 +43,25 @@ check_health() {
     sleep 2
   done
   return 1
+}
+
+sync_dist_to_host() {
+  if [ "$SYNC_DIST_TO_HOST" != "1" ]; then
+    log "skipping host dist sync"
+    return
+  fi
+
+  local next_dist="$APP_ROOT/dist.next"
+  local previous_dist="$APP_ROOT/dist.previous"
+  log "syncing built dist from container to host"
+  rm -rf "$next_dist" "$previous_dist"
+  mkdir -p "$next_dist"
+  docker cp "$APP_NAME:/app/dist/." "$next_dist/"
+  if [ -d "$APP_ROOT/dist" ]; then
+    mv "$APP_ROOT/dist" "$previous_dist"
+  fi
+  mv "$next_dist" "$APP_ROOT/dist"
+  rm -rf "$previous_dist"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -134,6 +154,7 @@ log "promoting new container"
 docker rename "$NEXT_CONTAINER" "$APP_NAME"
 docker rm -f "$BACKUP_CONTAINER" >/dev/null 2>&1 || true
 PROMOTED=1
+sync_dist_to_host
 
 printf '\n'
 log "deployed successfully"
