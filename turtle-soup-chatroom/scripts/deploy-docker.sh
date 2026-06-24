@@ -31,6 +31,19 @@ git_in_dir() {
   (cd "$dir" && git "$@")
 }
 
+check_health() {
+  local attempt=1
+  while [ "$attempt" -le 12 ]; do
+    if curl -fsS "$HEALTH_URL"; then
+      return 0
+    fi
+    printf '[deploy:docker] health check attempt %s/12 failed, retrying...\n' "$attempt" >&2
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+  return 1
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 APP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 GIT_ROOT="$(git_in_dir "$APP_ROOT" rev-parse --show-toplevel)"
@@ -109,7 +122,7 @@ docker run -d \
   "$IMAGE_NAME:$IMAGE_TAG"
 
 log "checking health endpoint"
-if ! curl -fsS --retry 12 --retry-delay 2 --retry-connrefused "$HEALTH_URL"; then
+if ! check_health; then
   echo "" >&2
   echo "[deploy:docker] health check failed: $HEALTH_URL" >&2
   docker logs "$NEXT_CONTAINER" --tail 120 || true

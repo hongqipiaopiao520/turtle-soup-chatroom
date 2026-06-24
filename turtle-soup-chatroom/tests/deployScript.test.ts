@@ -39,6 +39,9 @@ describe("server deploy script", () => {
     expect(script).toContain("-v \"$APP_ROOT/data:/app/data\"");
     expect(script).toContain("trap rollback ERR");
     expect(script).toContain("docker rename \"$APP_NAME\" \"$BACKUP_CONTAINER\"");
+    expect(script).toContain("check_health()");
+    expect(script).toContain("curl -fsS \"$HEALTH_URL\"");
+    expect(script).not.toContain("--retry-connrefused");
     expect(script).not.toContain("npm run build");
   });
 });
