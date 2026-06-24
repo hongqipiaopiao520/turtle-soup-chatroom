@@ -24,6 +24,13 @@ export interface Puzzle {
   createdAt: string;
 }
 
+export interface SolutionPointDefinition {
+  id: string;
+  label: string;
+  weight: number;
+  aliases: string[];
+}
+
 export type PublicPuzzle = Omit<Puzzle, "truth">;
 
 export type PuzzleStatus = "draft" | "reviewing" | "published" | "rejected";
@@ -74,6 +81,8 @@ export interface HostAnswer {
   contributionScore: number;
   isBreakthrough: boolean;
   pinned: boolean;
+  coveredPointIds?: string[];
+  coverageConfidence?: number;
   createdAt: string;
 }
 

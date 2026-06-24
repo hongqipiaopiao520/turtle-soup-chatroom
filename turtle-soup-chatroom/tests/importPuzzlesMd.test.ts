@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   convertMarkdownRowToPuzzle,
   importMarkdownPuzzles,
+  parseMarkdownPuzzleSections,
   parseMarkdownPuzzleTable,
   parseSourceLink
 } from "../scripts/import-puzzles-md.mjs";
+import { parseSolutionPointDefinitions } from "../server/puzzleImporter";
 import { openDatabase } from "../server/storage/database";
 import { createPuzzleRepository } from "../server/storage/puzzleRepository";
 
@@ -17,6 +19,35 @@ const sampleTable = `# 海龟汤去重总表
 |---:|---|---|---|---|
 | 1 | 《妹妹的房间》 | 妹妹的房间传来声音<br>我开门看了一眼 | 妹妹的头七。保安担心事情败露。 | [许二木S2-1](https://zhuanlan.zhihu.com/p/1937434215919646614) |
 | 2 | 《歌声》 | 男人和女人喝酒，突然听到熟悉的歌声。 | 项羽听见四面楚歌，知道家乡沦陷。 | [许二木S2-1](https://zhuanlan.zhihu.com/p/1937434215919646614) |
+`;
+
+const sampleSections = `# 许二木海龟汤完整整理
+
+## 1. 《妹妹的房间》
+
+**来源：** [许二木S2-1](https://example.test/a)
+
+**汤面：**
+
+妹妹的房间传来很多球鞋摩擦地板的声音。
+
+**汤底：**
+
+妹妹的棺椁被打开，里面躲着很多老鼠。
+
+---
+
+## 2. 《宿舍》
+
+**来源：** [许二木S2-1](https://example.test/b)
+
+**汤面：**
+
+今天天气很热，老大在宿舍门口吃冰棍。
+
+**汤底：**
+
+这是雪山循环，帐篷外的人都是过去的自己。
 `;
 
 const tmpRoots: string[] = [];
@@ -58,6 +89,21 @@ describe("markdown puzzle import", () => {
     expect(parseSourceLink("经典海龟汤")).toEqual({ sourceTitle: "经典海龟汤", sourceUrl: undefined });
   });
 
+  it("parses markdown heading sections", () => {
+    const rows = parseMarkdownPuzzleSections(sampleSections);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual({
+      index: 1,
+      title: "妹妹的房间",
+      surface: "妹妹的房间传来很多球鞋摩擦地板的声音。",
+      truth: "妹妹的棺椁被打开，里面躲着很多老鼠。",
+      sourceTitle: "许二木S2-1",
+      sourceUrl: "https://example.test/a"
+    });
+    expect(rows[1].title).toBe("宿舍");
+  });
+
   it("converts a parsed row into a reviewing managed puzzle", () => {
     const [row] = parseMarkdownPuzzleTable(sampleTable);
     const puzzle = convertMarkdownRowToPuzzle(row);
@@ -80,12 +126,32 @@ describe("markdown puzzle import", () => {
       sourceUrl: "https://example.test/source"
     });
 
-    expect(puzzle.solutionPoints).toContain("妹妹已经死亡");
-    expect(puzzle.solutionPoints).toContain("棺材被人打开");
-    expect(puzzle.solutionPoints).toContain("保安有恋尸癖");
-    expect(puzzle.solutionPoints).toContain("叙述者被杀死");
+    const labels = parseSolutionPointDefinitions(puzzle.solutionPoints).map((point) => point.label);
+    expect(labels).toContain("妹妹已经死亡");
+    expect(labels).toContain("棺材被人打开");
+    expect(labels).toContain("保安有恋尸癖");
+    expect(labels).toContain("叙述者被杀死");
     expect(puzzle.solutionPoints).toHaveLength(8);
-    expect(puzzle.solutionPoints.every((point) => point.length <= 18)).toBe(true);
+    expect(parseSolutionPointDefinitions(puzzle.solutionPoints).every((point) => point.label.length <= 18)).toBe(true);
+  });
+
+  it("normalizes cold water facts into weighted non-duplicative solution points", () => {
+    const puzzle = convertMarkdownRowToPuzzle({
+      index: 3,
+      title: "冷掉的水",
+      surface: "男人喝了一口冷水后立刻报警。",
+      truth: "他离家前倒的是热水。杯子变冷且位置没变，说明有人进入房间并替换了杯中液体，他意识到独居住所被入侵。",
+      sourceTitle: "测试来源",
+      sourceUrl: "https://example.test/cold-water"
+    });
+
+    expect(puzzle.solutionPoints).toEqual([
+      "25|water-state|杯中液体状态异常|水变冷,原本是热水",
+      "15|cup-position|杯子位置没有明显变化|杯子没动,位置没变",
+      "25|intrusion|有人进入房间|有人来过,有人进屋",
+      "25|liquid-tampered|有人替换或动过杯中液体|换水,动过水,替换液体",
+      "10|realization|男人意识到住所被入侵|报警原因,发现入侵"
+    ]);
   });
 
   it("imports parsed rows into a sqlite review queue", () => {
@@ -100,6 +166,24 @@ describe("markdown puzzle import", () => {
 
     expect(result).toEqual({ imported: 2, skipped: 0 });
     expect(repository.listManaged("reviewing").map((puzzle) => puzzle.title).sort()).toEqual(["妹妹的房间", "歌声"].sort());
+    db.close();
+  });
+
+  it("imports markdown heading sections into a sqlite review queue", () => {
+    const db = openDatabase(makeDbPath());
+    const repository = createPuzzleRepository(db);
+
+    const result = importMarkdownPuzzles({
+      content: sampleSections,
+      repository
+    });
+
+    expect(result).toEqual({ imported: 2, skipped: 0 });
+    const puzzles = repository.listManaged("reviewing").sort((left, right) => left.title.localeCompare(right.title));
+    expect(puzzles.map((puzzle) => puzzle.title)).toEqual(["妹妹的房间", "宿舍"]);
+    expect(puzzles[0].surface).toBe("妹妹的房间传来很多球鞋摩擦地板的声音。");
+    expect(puzzles[0].truth).toBe("妹妹的棺椁被打开，里面躲着很多老鼠。");
+    expect(puzzles[0].sourceUrl).toBe("https://example.test/a");
     db.close();
   });
 });

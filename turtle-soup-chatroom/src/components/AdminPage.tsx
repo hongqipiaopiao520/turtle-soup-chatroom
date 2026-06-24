@@ -1,13 +1,15 @@
 import { Check, DownloadCloud, RefreshCw, Save, Search, ShieldCheck, X } from "lucide-react";
-import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
+import type { ChangeEvent, Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   fetchAdminPuzzles,
+  importAdminPuzzleBatch,
   importAdminPuzzleText,
   publishAdminPuzzle,
   rejectAdminPuzzle,
   updateAdminPuzzle
 } from "../client/adminPuzzles";
+import { parsePuzzleFileContent, type ParsedPuzzleFileItem } from "../client/puzzleFileImport";
 import type { Difficulty, ManagedPuzzle, PuzzleStatus } from "../shared/types";
 
 type AdminStatusFilter = PuzzleStatus | "all";
@@ -28,6 +30,20 @@ interface AdminDraft {
   rawText: string;
 }
 
+export function formatBatchImportMessage(input: {
+  imported: number;
+  failed: Array<{ index: number; message: string }>;
+}) {
+  if (input.failed.length === 0) return `已导入 ${input.imported} 条`;
+  const shownFailures = input.failed
+    .slice(0, 5)
+    .map((failure) => `第 ${failure.index + 1} 条 ${failure.message}`)
+    .join("；");
+  const hiddenCount = input.failed.length - 5;
+  const suffix = hiddenCount > 0 ? `；另有 ${hiddenCount} 条失败` : "";
+  return `已导入 ${input.imported} 条，失败 ${input.failed.length} 条：${shownFailures}${suffix}`;
+}
+
 export function AdminPage({
   initialPuzzles = [],
   disableInitialLoad = false
@@ -43,6 +59,8 @@ export function AdminPage({
   const [rawImport, setRawImport] = useState("");
   const [sourceTitle, setSourceTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [fileItems, setFileItems] = useState<ParsedPuzzleFileItem[]>([]);
+  const [fileImportName, setFileImportName] = useState("");
   const [message, setMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
 
@@ -106,6 +124,44 @@ export function AdminPage({
       setSelectedId(imported.id);
       setRawImport("");
       setMessage("已导入，等待审核");
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function chooseImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const content = await file.text();
+    const items = parsePuzzleFileContent({ filename: file.name, content });
+    setFileImportName(file.name);
+    setFileItems(items);
+    setMessage(items.length > 0 ? `已解析 ${items.length} 条，确认后导入` : "没有解析到可导入题目");
+  }
+
+  async function importFileItems() {
+    if (fileItems.length === 0) {
+      setMessage("请先选择文件");
+      return;
+    }
+    setIsBusy(true);
+    setMessage("正在批量导入...");
+    try {
+      const result = await importAdminPuzzleBatch(fileItems, { token: token.trim() || undefined });
+      setPuzzles((current) => [
+        ...result.imported,
+        ...current.filter((item) => !result.imported.some((imported) => imported.id === item.id))
+      ]);
+      setSelectedId(result.imported[0]?.id ?? selectedId);
+      if (result.failed.length === 0) {
+        setFileItems([]);
+      }
+      setMessage(formatBatchImportMessage({
+        imported: result.imported.length,
+        failed: result.failed
+      }));
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
@@ -216,6 +272,24 @@ export function AdminPage({
             <DownloadCloud size={16} /> 导入
           </button>
         </form>
+      </section>
+
+      <section className="admin-import-panel admin-file-import-panel">
+        <div>
+          <h2>文件导入</h2>
+          <p>支持 .txt/.md/.csv，解析后进入审核队列。</p>
+        </div>
+        <div className="admin-file-import-form">
+          <label className="ghost-button">
+            <DownloadCloud size={16} /> 选择文件
+            <input type="file" accept=".txt,.md,.markdown,.csv" onChange={chooseImportFile} hidden />
+          </label>
+          <span>{fileImportName || "未选择文件"}</span>
+          <strong>{fileItems.length > 0 ? `${fileItems.length} 条待导入` : "支持 .txt/.md/.csv"}</strong>
+          <button className="primary-button" type="button" onClick={importFileItems} disabled={isBusy || fileItems.length === 0}>
+            导入文件题目
+          </button>
+        </div>
       </section>
 
       <section className="admin-workbench">

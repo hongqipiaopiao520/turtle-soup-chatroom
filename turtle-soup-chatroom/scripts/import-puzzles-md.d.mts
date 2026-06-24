@@ -20,5 +20,7 @@ export interface MarkdownPuzzleImportOptions {
 
 export function parseSourceLink(value: string): { sourceTitle: string; sourceUrl?: string };
 export function parseMarkdownPuzzleTable(content: string): MarkdownPuzzleRow[];
+export function parseMarkdownPuzzleSections(content: string): MarkdownPuzzleRow[];
+export function parseMarkdownPuzzleRows(content: string): MarkdownPuzzleRow[];
 export function convertMarkdownRowToPuzzle(row: MarkdownPuzzleRow, status?: PuzzleStatus): ManagedPuzzle;
 export function importMarkdownPuzzles(options: MarkdownPuzzleImportOptions): { imported: number; skipped: number };

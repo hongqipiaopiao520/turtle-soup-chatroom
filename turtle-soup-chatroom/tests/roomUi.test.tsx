@@ -107,4 +107,59 @@ describe("room UI settlement", () => {
     expect(markup).toContain(room.puzzle.truth);
     expect(markup).toContain("本局 MVP");
   });
+
+  it("renders compact pin controls without visible pin text", () => {
+    const room = makeSolvedRoom();
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { origin: "http://localhost:5173" }, setTimeout: () => 0 }
+    });
+
+    const markup = renderToStaticMarkup(
+      <RoomPage
+        room={room}
+        playerId="player-host"
+        onBack={() => undefined}
+        onAsk={() => undefined}
+        onPin={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+
+    expect(markup).toContain("pin-answer-button");
+    expect(markup).toContain('aria-label="收藏到卷宗"');
+    expect(markup).not.toContain(">收藏</button>");
+  });
+
+  it("renders chat as a constrained scroll region", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      chatMessages: Array.from({ length: 24 }, (_, index) => ({
+        id: `chat-${index}`,
+        playerId: "player-host",
+        playerName: "房主",
+        body: `消息 ${index}`,
+        createdAt: "2026-06-23T00:01:00.000Z"
+      }))
+    };
+
+    const markup = renderToStaticMarkup(
+      <SidePanel
+        room={room}
+        playerId="player-host"
+        onOpenSettlement={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    expect(markup).toContain('class="side-section chat-section"');
+    expect(markup).toContain('class="chat-list"');
+    expect(markup).toContain("消息 23");
+  });
 });

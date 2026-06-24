@@ -10,6 +10,14 @@ interface ImportTextInput {
   sourceTitle?: string;
 }
 
+const ImportBatchSchema = z.object({
+  items: z.array(z.object({
+    rawText: z.string().trim().min(1).max(10000),
+    sourceTitle: z.string().trim().max(160).optional(),
+    sourceUrl: z.string().trim().url().optional().or(z.literal(""))
+  })).min(1).max(100)
+});
+
 const AdminPuzzleUpdateSchema = z.object({
   title: z.string().trim().min(1).max(80),
   surface: z.string().trim().min(1).max(500),
@@ -43,6 +51,27 @@ export function importTextDraft(repository: PuzzleRepository, input: ImportTextI
 export async function importTextWithAi(repository: PuzzleRepository, input: ImportTextInput): Promise<ManagedPuzzle> {
   const result = await importPuzzleFromText(input.rawText, input.sourceUrl, input.sourceTitle);
   return repository.upsertManaged(result.puzzle);
+}
+
+export async function importBatchWithAi(repository: PuzzleRepository, input: unknown) {
+  const parsed = ImportBatchSchema.parse(input);
+  const imported: ManagedPuzzle[] = [];
+  const failed: Array<{ index: number; message: string }> = [];
+
+  for (let index = 0; index < parsed.items.length; index += 1) {
+    const item = parsed.items[index];
+    try {
+      imported.push(await importTextWithAi(repository, {
+        rawText: item.rawText,
+        sourceTitle: item.sourceTitle,
+        sourceUrl: item.sourceUrl || undefined
+      }));
+    } catch (error) {
+      failed.push({ index, message: error instanceof Error ? error.message : "导入失败" });
+    }
+  }
+
+  return { imported, failed };
 }
 
 export function publishAdminPuzzle(repository: PuzzleRepository, puzzleId: string) {
@@ -90,6 +119,14 @@ export function createAdminPuzzleRouter(repository: PuzzleRepository) {
         sourceTitle: request.body?.sourceTitle
       })
     );
+  });
+
+  router.post("/puzzles/import-batch", async (request, response) => {
+    try {
+      response.status(201).json(await importBatchWithAi(repository, request.body));
+    } catch (error) {
+      response.status(400).json({ message: error instanceof Error ? error.message : "批量导入失败" });
+    }
   });
 
   router.post("/puzzles/:id/publish", (request, response) => {

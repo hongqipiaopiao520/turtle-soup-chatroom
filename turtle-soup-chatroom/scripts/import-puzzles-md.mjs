@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { normalizeImportedSolutionPoints } from "../server/puzzleImporter.ts";
 function decodeEntity(value) {
   return value
     .replace(/&nbsp;/g, " ")
@@ -56,6 +57,80 @@ export function parseMarkdownPuzzleTable(content) {
     });
   }
   return rows;
+}
+
+function parseMarkdownSectionHeading(line) {
+  const match = line.match(/^#{2,6}\s*(?:(\d+)\s*[.、]\s*)?(?:《([^》]+)》|(.+?))\s*$/);
+  if (!match) return undefined;
+  const title = cleanTitle(match[2] ?? match[3] ?? "");
+  if (!title || /^汤[面底]\s*[:：]?$/.test(title) || /^来源\s*[:：]?$/.test(title)) return undefined;
+  return {
+    index: Number.parseInt(match[1] ?? "0", 10) || 0,
+    title
+  };
+}
+
+function parseMarkdownLabeledLine(line, label) {
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = line.match(new RegExp(`^\\s*(?:\\*\\*)?${escapedLabel}\\s*[:：]\\s*(?:\\*\\*)?\\s*(.*?)\\s*$`));
+  return match ? cleanCell(match[1] ?? "") : undefined;
+}
+
+function findMarkdownLabelLine(lines, label, startIndex = 0) {
+  for (let index = startIndex; index < lines.length; index += 1) {
+    if (parseMarkdownLabeledLine(lines[index], label) !== undefined) return index;
+  }
+  return -1;
+}
+
+function cleanMarkdownBlock(lines) {
+  return cleanCell(
+    lines
+      .join("\n")
+      .replace(/^\s*-{3,}\s*$/gm, "")
+      .replace(/\n{3,}/g, "\n\n")
+  );
+}
+
+export function parseMarkdownPuzzleSections(content) {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const headings = lines
+    .map((line, index) => ({ line: index, ...parseMarkdownSectionHeading(line) }))
+    .filter((heading) => heading.title);
+
+  return headings
+    .map((heading, headingIndex) => {
+      const nextHeading = headings[headingIndex + 1]?.line ?? lines.length;
+      const sectionLines = lines.slice(heading.line + 1, nextHeading);
+      const sourceLineIndex = findMarkdownLabelLine(sectionLines, "来源");
+      const surfaceLineIndex = findMarkdownLabelLine(sectionLines, "汤面");
+      const truthLineIndex = findMarkdownLabelLine(sectionLines, "汤底", surfaceLineIndex + 1);
+
+      if (surfaceLineIndex < 0 || truthLineIndex < 0 || truthLineIndex <= surfaceLineIndex) return undefined;
+
+      const sourceValue = sourceLineIndex >= 0 ? parseMarkdownLabeledLine(sectionLines[sourceLineIndex], "来源") ?? "" : "";
+      const source = sourceValue ? parseSourceLink(sourceValue) : { sourceTitle: "", sourceUrl: undefined };
+      const inlineSurface = parseMarkdownLabeledLine(sectionLines[surfaceLineIndex], "汤面") ?? "";
+      const inlineTruth = parseMarkdownLabeledLine(sectionLines[truthLineIndex], "汤底") ?? "";
+      const surface = cleanCell([inlineSurface, cleanMarkdownBlock(sectionLines.slice(surfaceLineIndex + 1, truthLineIndex))].filter(Boolean).join("\n"));
+      const truth = cleanCell([inlineTruth, cleanMarkdownBlock(sectionLines.slice(truthLineIndex + 1))].filter(Boolean).join("\n"));
+
+      if (!surface || !truth) return undefined;
+
+      return {
+        index: heading.index || headingIndex + 1,
+        title: heading.title,
+        surface,
+        truth,
+        ...source
+      };
+    })
+    .filter(Boolean);
+}
+
+export function parseMarkdownPuzzleRows(content) {
+  const tableRows = parseMarkdownPuzzleTable(content);
+  return tableRows.length > 0 ? tableRows : parseMarkdownPuzzleSections(content);
 }
 
 function pinyinishSlug(value) {
@@ -138,7 +213,11 @@ function solutionPointsFor(row) {
     }
   }
 
-  return points.slice(0, 8);
+  return normalizeImportedSolutionPoints({
+    surface: row.surface,
+    truth: row.truth,
+    solutionPoints: points.slice(0, 8)
+  });
 }
 
 function difficultyFor(row) {
@@ -212,7 +291,7 @@ export function convertMarkdownRowToPuzzle(row, status = "reviewing") {
 }
 
 export function importMarkdownPuzzles(options) {
-  const rows = parseMarkdownPuzzleTable(options.content)
+  const rows = parseMarkdownPuzzleRows(options.content)
     .filter((row) => !options.source || row.sourceTitle.includes(options.source))
     .slice(0, options.limit ?? Number.POSITIVE_INFINITY);
   let imported = 0;

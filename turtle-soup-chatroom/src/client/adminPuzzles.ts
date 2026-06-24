@@ -11,6 +11,13 @@ export interface AdminPuzzleImportInput {
   sourceTitle?: string;
 }
 
+export type AdminBatchImportItem = AdminPuzzleImportInput;
+
+export interface AdminBatchImportResult {
+  imported: ManagedPuzzle[];
+  failed: Array<{ index: number; message: string }>;
+}
+
 export interface AdminPuzzleUpdateInput {
   title: string;
   surface: string;
@@ -73,6 +80,18 @@ export function importAdminPuzzleText(input: AdminPuzzleImportInput, options: Ad
       method: "POST",
       headers: headers(options, true),
       body: JSON.stringify(input)
+    },
+    options
+  );
+}
+
+export function importAdminPuzzleBatch(items: AdminBatchImportItem[], options: AdminClientOptions = {}) {
+  return adminFetch<AdminBatchImportResult>(
+    "/api/admin/puzzles/import-batch",
+    {
+      method: "POST",
+      headers: headers(options, true),
+      body: JSON.stringify({ items })
     },
     options
   );

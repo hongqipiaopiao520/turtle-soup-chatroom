@@ -20,6 +20,7 @@ The server loads local `.env` values on startup. Generic `AI_*` values take prec
 AI_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
 AI_API_KEY=replace_me
 AI_MODEL=mimo-v2.5-pro
+AI_IMPORT_TIMEOUT_MS=60000
 PORT=8787
 ```
 

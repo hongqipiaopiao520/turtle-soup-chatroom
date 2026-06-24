@@ -19,7 +19,13 @@ export const seedPuzzles: Puzzle[] = [
     title: "冷掉的水",
     surface: "男人喝了一口冷水后立刻报警。",
     truth: "他离家前倒的是热水。杯子变冷且位置没变，说明有人进入房间并替换了杯中液体，他意识到独居住所被入侵。",
-    solutionPoints: ["水原本是热的", "杯子位置没变但水变冷", "有人进入房间", "有人替换或动过杯中液体", "男人意识到住所被入侵"],
+    solutionPoints: [
+      "25|water-state|杯中液体状态异常|水变冷,原本是热水",
+      "15|cup-position|杯子位置没有明显变化|杯子没动,位置没变",
+      "25|intrusion|有人进入房间|有人来过,有人进屋",
+      "25|liquid-tampered|有人替换或动过杯中液体|换水,动过水,替换液体",
+      "10|realization|男人意识到住所被入侵|报警原因,发现入侵"
+    ],
     difficulty: "easy",
     tags: ["本格", "生活", "入门"],
     author: "初版题库",

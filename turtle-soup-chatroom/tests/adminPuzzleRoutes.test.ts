@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { seedPuzzles } from "../src/data/seedPuzzles";
 import {
   importTextDraft,
+  importBatchWithAi,
   importTextWithAi,
   isAdminRequestAuthorized,
   listAdminPuzzles,
@@ -93,8 +94,51 @@ describe("admin puzzle helpers", () => {
 
     expect(puzzle.status).toBe("reviewing");
     expect(puzzle.title).toBe("结构化题");
-    expect(puzzle.solutionPoints).toEqual(["铃声是信号", "事先有约定"]);
+    expect(puzzle.solutionPoints).toEqual(["50|point-1|铃声是信号", "50|point-2|事先有约定"]);
     expect(repository.listManaged("reviewing")).toHaveLength(1);
+    db.close();
+  });
+
+  it("imports multiple raw puzzle items into the review queue", async () => {
+    process.env.AI_BASE_URL = "https://example.test";
+    process.env.AI_API_KEY = "test-key";
+    process.env.AI_MODEL = "test-model";
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: JSON.stringify({
+            title: "A",
+            surface: "一",
+            truth: "二",
+            solutionPoints: ["关键点一"],
+            hints: [],
+            difficulty: "easy",
+            tags: [],
+            qualityScore: 80,
+            qualityIssues: [],
+            qualitySummary: "结构完整"
+          }) } }]
+        })
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        json: vi.fn()
+      } as unknown as Response);
+    const { db, repository } = makeRepository();
+
+    const result = await importBatchWithAi(repository, {
+      items: [
+        { rawText: "标题：A\n汤面：一\n汤底：二", sourceTitle: "文件A" },
+        { rawText: "标题：B\n汤面：三\n汤底：四", sourceTitle: "文件B" }
+      ]
+    });
+
+    expect(result.imported).toHaveLength(1);
+    expect(result.imported[0]).toMatchObject({ title: "A", surface: "一", truth: "二", status: "reviewing" });
+    expect(result.failed).toEqual([{ index: 1, message: "AI 增强失败：HTTP 429" }]);
+    expect(repository.listManaged()).toHaveLength(1);
     db.close();
   });
 

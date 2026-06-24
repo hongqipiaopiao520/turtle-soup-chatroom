@@ -304,6 +304,31 @@ select:focus-visible {
   margin-top: 0;
 }
 
+.resume-room-card {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  border: 1px solid rgba(216, 168, 79, 0.42);
+  border-radius: 8px;
+  background: rgba(216, 168, 79, 0.1);
+  color: var(--text);
+  cursor: pointer;
+  margin-bottom: 12px;
+  padding: 12px;
+  text-align: left;
+}
+
+.resume-room-card span {
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.resume-room-card strong {
+  overflow-wrap: anywhere;
+}
+
 .detail-shell {
   max-width: 1100px;
   margin: 0 auto;
@@ -466,6 +491,19 @@ select:focus-visible {
   padding: 10px;
 }
 
+.admin-file-import-form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-file-import-form span,
+.admin-file-import-form strong {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .admin-workbench {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
@@ -617,13 +655,15 @@ select:focus-visible {
   .home-grid,
   .admin-import-panel,
   .admin-import-form,
+  .admin-file-import-form,
   .admin-workbench,
   .admin-editor-grid {
     grid-template-columns: 1fr;
   }
 
   .admin-topbar,
-  .admin-editor-head {
+  .admin-editor-head,
+  .admin-file-import-form {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1004,11 +1044,17 @@ select:focus-visible {
 
 .side-panel {
   display: grid;
-  align-content: start;
+  grid-template-rows: auto auto minmax(0, 1fr) minmax(120px, auto);
   gap: 12px;
+  min-height: 0;
+  overflow: hidden;
   background: transparent;
   box-shadow: none;
   border: 0;
+}
+
+.side-section {
+  min-height: 0;
 }
 
 .side-section h2 {
@@ -1068,7 +1114,16 @@ select:focus-visible {
 }
 
 .chat-section {
-  min-height: 320px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.chat-list {
+  min-height: 0;
+  max-height: none;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
 }
 
 .chat-list p {
@@ -1085,6 +1140,19 @@ select:focus-visible {
 .chat-input .ghost-button {
   justify-content: center;
   padding: 10px;
+}
+
+.pin-answer-button {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+}
+
+.pin-answer-button-active {
+  border-color: rgba(216, 168, 79, 0.58);
+  background: rgba(216, 168, 79, 0.14);
+  color: #f4dca0;
 }
 
 .side-section pre {
@@ -1219,6 +1287,14 @@ select:focus-visible {
 
   .room-grid {
     overflow: visible;
+  }
+
+  .side-panel {
+    overflow: visible;
+  }
+
+  .chat-section {
+    min-height: 360px;
   }
 
   .host-panel {

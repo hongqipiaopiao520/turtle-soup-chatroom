@@ -1,5 +1,5 @@
 import { Award, MessageCircle, NotebookTabs, Send, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RoomState } from "../shared/types";
 
 export function SidePanel({
@@ -14,7 +14,15 @@ export function SidePanel({
   onSendChat: (body: string) => void;
 }) {
   const [chat, setChat] = useState("");
+  const chatListRef = useRef<HTMLDivElement>(null);
   const rankedPlayers = [...room.players].sort((a, b) => b.score - a.score);
+
+  useEffect(() => {
+    const chatList = chatListRef.current;
+    if (chatList) {
+      chatList.scrollTop = chatList.scrollHeight;
+    }
+  }, [room.chatMessages.length]);
 
   function submitChat() {
     const trimmed = chat.trim();
@@ -64,7 +72,7 @@ export function SidePanel({
         <h2>
           <MessageCircle size={17} /> 游戏聊天
         </h2>
-        <div className="chat-list">
+        <div className="chat-list" ref={chatListRef}>
           {room.chatMessages.length === 0 ? (
             <p className="muted">暂无聊天消息</p>
           ) : (
@@ -76,7 +84,17 @@ export function SidePanel({
           )}
         </div>
         <div className="chat-input">
-          <input value={chat} onChange={(event) => setChat(event.target.value)} placeholder="输入消息..." />
+          <input
+            value={chat}
+            onChange={(event) => setChat(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submitChat();
+              }
+            }}
+            placeholder="输入消息..."
+          />
           <button className="ghost-button" onClick={submitChat}>
             <Send size={15} />
           </button>

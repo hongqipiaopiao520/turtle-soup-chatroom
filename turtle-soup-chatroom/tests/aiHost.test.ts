@@ -80,6 +80,20 @@ describe("parseHostResponse", () => {
       progress: 42
     });
   });
+
+  it("parses covered solution point ids from structured host JSON", () => {
+    const result = parseHostResponse(
+      '{"answerType":"partial","answer":"覆盖了入侵方向。","progress":50,"coveredPointIds":["intrusion","liquid-tampered"],"coverageConfidence":0.82}'
+    );
+
+    expect(result).toEqual({
+      answerType: "partial",
+      answer: "覆盖了入侵方向。",
+      progress: 50,
+      coveredPointIds: ["intrusion", "liquid-tampered"],
+      coverageConfidence: 0.82
+    });
+  });
 });
 
 describe("askHost", () => {

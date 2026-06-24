@@ -8,6 +8,7 @@ import type {
   RoomSession,
   RoomState
 } from "../src/shared/types";
+import { parseSolutionPointDefinitions } from "./puzzleImporter";
 
 const rooms = new Map<string, RoomState>();
 const ANSWER_UNLOCK_PROGRESS = 95;
@@ -81,6 +82,18 @@ function normalizeRoom(room: RoomState): RoomState {
 
 function contributionScore(progressDelta: number, crossedUnlock: boolean) {
   return progressDelta * 10 + (progressDelta >= 20 ? 50 : 0) + (crossedUnlock ? 80 : 0);
+}
+
+function progressFromCoveredPoints(puzzle: Puzzle, coveredPointIds?: string[]) {
+  if (!coveredPointIds || coveredPointIds.length === 0) return undefined;
+  const definitions = parseSolutionPointDefinitions(puzzle.solutionPoints);
+  const totalWeight = definitions.reduce((sum, point) => sum + Math.max(point.weight, 0), 0);
+  if (totalWeight <= 0) return undefined;
+  const covered = new Set(coveredPointIds);
+  const coveredWeight = definitions
+    .filter((point) => covered.has(point.id))
+    .reduce((sum, point) => sum + Math.max(point.weight, 0), 0);
+  return clampProgress((coveredWeight / totalWeight) * 100);
 }
 
 function calculateSettlement(room: RoomState, unlockingPlayerId?: string): RoomSettlement {
@@ -213,7 +226,9 @@ export function addHostAnswer(
   }
 
   const previousProgress = room.progress;
-  const nextProgress = Math.max(previousProgress, clampProgress(answer.progress));
+  const structuredProgress = progressFromCoveredPoints(room.puzzle, answer.coveredPointIds);
+  const reportedProgress = structuredProgress ?? answer.progress;
+  const nextProgress = Math.max(previousProgress, clampProgress(reportedProgress));
   const progressDelta = nextProgress - previousProgress;
   const crossedUnlock = previousProgress < ANSWER_UNLOCK_PROGRESS && nextProgress >= ANSWER_UNLOCK_PROGRESS;
   const score = contributionScore(progressDelta, crossedUnlock);
@@ -226,6 +241,8 @@ export function addHostAnswer(
     contributionScore: score,
     isBreakthrough: progressDelta >= 20 || crossedUnlock,
     pinned: false,
+    coveredPointIds: answer.coveredPointIds ?? [],
+    coverageConfidence: answer.coverageConfidence ?? 0,
     createdAt: now()
   };
 

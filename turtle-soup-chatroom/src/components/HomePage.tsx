@@ -1,17 +1,22 @@
 import { Search, Shuffle, Users } from "lucide-react";
 import { useMemo, useState } from "react";
+import type { StoredRoomSession } from "../client/roomSessionMemory";
 import { collectTags, filterPuzzles } from "../shared/puzzleFilters";
 import type { Difficulty, PublicPuzzle, PuzzleSort } from "../shared/types";
 import { PuzzleCard } from "./PuzzleCard";
 
 export function HomePage({
   puzzles: availablePuzzles,
+  recentRoom,
   onOpenPuzzle,
-  onRandomPuzzle
+  onRandomPuzzle,
+  onResumeRoom
 }: {
   puzzles: PublicPuzzle[];
+  recentRoom?: StoredRoomSession | null;
   onOpenPuzzle: (puzzle: PublicPuzzle) => void;
   onRandomPuzzle: () => void;
+  onResumeRoom?: (session: StoredRoomSession) => void;
 }) {
   const [query, setQuery] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty | "all">("all");
@@ -29,7 +34,7 @@ export function HomePage({
       <header className="topbar">
         <div>
           <span className="eyebrow">AI HOSTED TURTLE SOUP</span>
-          <h1>出前一汤聊天室</h1>
+          <h1>知心李歪聊天室</h1>
         </div>
         <div className="top-actions">
           <span className="status-pill">72 今日活跃</span>
@@ -74,6 +79,12 @@ export function HomePage({
           ))}
         </div>
         <aside className="activity-panel">
+          {recentRoom && onResumeRoom && (
+            <button className="resume-room-card" type="button" onClick={() => onResumeRoom(recentRoom)}>
+              <span>继续上次房间</span>
+              <strong>{recentRoom.puzzleTitle ?? recentRoom.roomId}</strong>
+            </button>
+          )}
           <h2><Users size={18} /> 今夜案台</h2>
           <p>先选一碗汤，进房间轮流逼近真相。完成度到 95% 后，会统一弹出汤底和本局结算。</p>
         </aside>

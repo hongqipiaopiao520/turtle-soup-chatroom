@@ -72,8 +72,13 @@ export function HostPanel({
                   {item.contributionScore > 0 && <span>{item.contributionScore} 分</span>}
                   {item.isBreakthrough && <span>关键突破</span>}
                 </div>
-                <button className="icon-button" onClick={() => onPin(item.id)} title="收藏到卷宗">
-                  <Pin size={15} /> {item.pinned ? "已收藏" : "收藏"}
+                <button
+                  className={`icon-button pin-answer-button ${item.pinned ? "pin-answer-button-active" : ""}`}
+                  onClick={() => onPin(item.id)}
+                  title={item.pinned ? "已收藏到卷宗" : "收藏到卷宗"}
+                  aria-label={item.pinned ? "已收藏到卷宗" : "收藏到卷宗"}
+                >
+                  <Pin size={15} />
                 </button>
               </div>
             </article>

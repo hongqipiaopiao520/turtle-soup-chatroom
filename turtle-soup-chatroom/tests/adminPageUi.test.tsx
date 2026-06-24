@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AdminPage } from "../src/components/AdminPage";
+import { AdminPage, formatBatchImportMessage } from "../src/components/AdminPage";
 import type { ManagedPuzzle } from "../src/shared/types";
 
 function makePuzzle(): ManagedPuzzle {
@@ -43,5 +43,28 @@ describe("AdminPage", () => {
     expect(markup).toContain("保存修改");
     expect(markup).toContain("发布");
     expect(markup).toContain("驳回");
+  });
+
+  it("renders file import controls", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
+    );
+
+    expect(markup).toContain("文件导入");
+    expect(markup).toContain("选择文件");
+    expect(markup).toContain("支持 .txt/.md/.csv");
+  });
+
+  it("formats several batch import failures with row-level reasons", () => {
+    expect(formatBatchImportMessage({
+      imported: 2,
+      failed: [
+        { index: 0, message: "AI 返回格式不合格：solutionPoints 至少 1 个/字" },
+        { index: 2, message: "AI 增强失败：请求超时" },
+        { index: 4, message: "AI 返回格式不合格：JSON 解析失败" }
+      ]
+    })).toBe(
+      "已导入 2 条，失败 3 条：第 1 条 AI 返回格式不合格：solutionPoints 至少 1 个/字；第 3 条 AI 增强失败：请求超时；第 5 条 AI 返回格式不合格：JSON 解析失败"
+    );
   });
 });

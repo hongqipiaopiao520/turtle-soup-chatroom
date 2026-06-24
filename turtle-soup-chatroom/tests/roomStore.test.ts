@@ -173,6 +173,35 @@ describe("roomStore", () => {
     expect(updated?.players[1]).toMatchObject({ score: 0, hits: 0, bestDelta: 0 });
   });
 
+  it("computes progress from weighted covered solution points", () => {
+    const { room, playerId } = createRoom(
+      {
+        ...seedPuzzles[1],
+        solutionPoints: [
+          "25|water-state|杯中液体状态异常|水变冷,原本是热水",
+          "15|cup-position|杯子位置没有明显变化|杯子没动",
+          "25|intrusion|有人进入房间|有人来过,有人进屋",
+          "25|liquid-tampered|有人替换或动过杯中液体|换水,动过水",
+          "10|realization|男人意识到住所被入侵|报警原因"
+        ]
+      },
+      "房主"
+    );
+
+    addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "有人进来换了水，所以他知道家里被闯入？",
+      answerType: "partial",
+      answer: "方向很接近。",
+      progress: 0,
+      coveredPointIds: ["intrusion", "liquid-tampered", "realization"],
+      coverageConfidence: 0.9
+    });
+
+    expect(getRoom(room.id)?.progress).toBe(60);
+  });
+
   it("returns settlement highlights after the answer is unlocked", () => {
     const { room, playerId } = createRoom(seedPuzzles[0], "房主");
     const joinSession = joinRoom(room.id, "玩家甲");

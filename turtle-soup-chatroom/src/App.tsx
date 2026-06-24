@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchPublicPuzzles } from "./client/puzzles";
+import {
+  mostRecentRoomSession,
+  readRoomSession,
+  removeRoomSession,
+  storeRoomSession
+} from "./client/roomSessionMemory";
 import { useRoomSocket } from "./client/useRoomSocket";
 import { AdminPage } from "./components/AdminPage";
 import { HomePage } from "./components/HomePage";
@@ -17,29 +23,6 @@ type NameRequest =
   | { kind: "create"; puzzle: PublicPuzzle }
   | { kind: "join"; roomId: string };
 
-function roomSessionKey(roomId: string) {
-  return `turtle-room-session:${roomId}`;
-}
-
-function readStoredPlayerId(roomId: string) {
-  try {
-    const raw = window.localStorage.getItem(roomSessionKey(roomId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { roomId?: string; playerId?: string };
-    return parsed.roomId === roomId && parsed.playerId ? parsed.playerId : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeRoomSession(roomId: string, playerId: string) {
-  window.localStorage.setItem(roomSessionKey(roomId), JSON.stringify({ roomId, playerId }));
-}
-
-function clearRoomSession(roomId: string) {
-  window.localStorage.removeItem(roomSessionKey(roomId));
-}
-
 export function App() {
   if (typeof window !== "undefined" && window.location.pathname === "/admin") {
     return <AdminPage />;
@@ -53,6 +36,7 @@ function PlayerApp() {
   const [puzzles, setPuzzles] = useState<PublicPuzzle[]>(seedPuzzles);
   const [pendingPuzzle, setPendingPuzzle] = useState<PublicPuzzle | null>(null);
   const [nameRequest, setNameRequest] = useState<NameRequest | null>(null);
+  const [recentRoom, setRecentRoom] = useState(() => mostRecentRoomSession());
   const roomSocket = useRoomSocket();
 
   useEffect(() => {
@@ -77,9 +61,9 @@ function PlayerApp() {
     const params = new URLSearchParams(window.location.search);
     const roomId = params.get("room");
     if (roomId) {
-      const storedPlayerId = readStoredPlayerId(roomId);
-      if (storedPlayerId) {
-        roomSocket.rejoinRoom(roomId, storedPlayerId);
+      const storedSession = readRoomSession(roomId);
+      if (storedSession) {
+        roomSocket.rejoinRoom(roomId, storedSession.playerId);
         setView({ name: "room" });
       } else {
         setNameRequest({ kind: "join", roomId });
@@ -89,7 +73,12 @@ function PlayerApp() {
 
   useEffect(() => {
     if (roomSocket.room && roomSocket.playerId) {
-      storeRoomSession(roomSocket.room.id, roomSocket.playerId);
+      storeRoomSession({
+        roomId: roomSocket.room.id,
+        playerId: roomSocket.playerId,
+        puzzleTitle: roomSocket.room.puzzle.title
+      });
+      setRecentRoom(mostRecentRoomSession());
     }
     if (roomSocket.room && roomSocket.playerId && pendingPuzzle) {
       window.history.replaceState(null, "", `?room=${roomSocket.room.id}`);
@@ -102,7 +91,8 @@ function PlayerApp() {
     if (!roomSocket.error) return;
     const roomId = new URLSearchParams(window.location.search).get("room");
     if (roomId) {
-      clearRoomSession(roomId);
+      removeRoomSession(roomId);
+      setRecentRoom(mostRecentRoomSession());
       if (roomSocket.error.includes("玩家不在房间内")) {
         setNameRequest({ kind: "join", roomId });
       }
@@ -170,8 +160,14 @@ function PlayerApp() {
       {nameRequest && <NameDialog request={nameRequest} onCancel={() => setNameRequest(null)} onSubmit={submitName} />}
       <HomePage
         puzzles={puzzles}
+        recentRoom={recentRoom}
         onOpenPuzzle={(puzzle) => setView({ name: "detail", puzzle })}
         onRandomPuzzle={randomPuzzle}
+        onResumeRoom={(session) => {
+          roomSocket.rejoinRoom(session.roomId, session.playerId);
+          window.history.replaceState(null, "", `?room=${session.roomId}`);
+          setView({ name: "room" });
+        }}
       />
     </>
   );
