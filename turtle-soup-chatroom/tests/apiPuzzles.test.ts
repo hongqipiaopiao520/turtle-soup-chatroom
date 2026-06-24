@@ -1,9 +1,9 @@
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { seedPuzzles } from "../src/data/seedPuzzles";
-import { listPublicPuzzles } from "../server/app";
+import { getClientAppAssets, listPublicPuzzles, shouldServeClientRoute } from "../server/app";
 import { openDatabase } from "../server/storage/database";
 import { createPuzzleRepository } from "../server/storage/puzzleRepository";
 
@@ -56,5 +56,23 @@ describe("/api/puzzles", () => {
     expect(body?.[0].surface).toBe(seedPuzzles[0].surface);
     expect(body?.[0].solutionPoints).toEqual(seedPuzzles[0].solutionPoints);
     expect(body?.[0]).not.toHaveProperty("truth");
+  });
+
+  it("detects the built SPA and limits fallback serving to client routes", () => {
+    const root = join(tmpdir(), `turtle-static-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tmpRoots.push(root);
+    mkdirSync(join(root, "dist"), { recursive: true });
+    writeFileSync(join(root, "dist", "index.html"), "<main>知心李歪聊天室</main>");
+
+    expect(getClientAppAssets(root, "production")).toMatchObject({
+      enabled: true,
+      distPath: join(root, "dist"),
+      indexPath: join(root, "dist", "index.html")
+    });
+    expect(getClientAppAssets(root, "development").enabled).toBe(false);
+    expect(shouldServeClientRoute("GET", "/rooms/example")).toBe(true);
+    expect(shouldServeClientRoute("GET", "/admin")).toBe(true);
+    expect(shouldServeClientRoute("GET", "/api/puzzles")).toBe(false);
+    expect(shouldServeClientRoute("POST", "/rooms/example")).toBe(false);
   });
 });

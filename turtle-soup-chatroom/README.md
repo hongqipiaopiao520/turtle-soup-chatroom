@@ -113,24 +113,45 @@ Markdown imports do not call the LLM. They reuse the existing `汤面` and `汤�
 
 ## Single-Server Deploy
 
-Recommended one-command deploy on the server:
+### Docker / BaoTa Container
+
+In Docker deployments, run the deploy script directly with `bash`. Do not use
+`npm run deploy:server` on an old host Node; the host only needs `git`, `docker`,
+and `curl`.
+
+```bash
+cd /www/wwwroot/turtle-soup-chatroom/turtle-soup-chatroom
+bash scripts/deploy-docker.sh
+```
+
+Useful overrides:
+
+```bash
+DEPLOY_BRANCH=main bash scripts/deploy-docker.sh
+SKIP_GIT_PULL=1 bash scripts/deploy-docker.sh
+HOST_PORT=8787 bash scripts/deploy-docker.sh
+HEALTH_URL=http://127.0.0.1:8787/api/health bash scripts/deploy-docker.sh
+```
+
+The Docker deploy script requires a clean working tree and an existing production
+`.env`. It pulls latest code, builds the Docker image from `Dockerfile`, mounts
+`data/` and `logs/`, starts the container, and checks `/api/health`.
+
+For BaoTa, point the site reverse proxy to `http://127.0.0.1:8787`. The container
+serves the built frontend, `/api/*`, and `/socket.io/*` from the same port.
+
+### PM2 / Host Node
+
+Use this only when the host Node can run normally:
 
 ```bash
 cd /www/wwwroot/turtle-soup-chatroom/turtle-soup-chatroom
 npm run deploy:server
 ```
 
-Useful overrides:
-
-```bash
-DEPLOY_BRANCH=main npm run deploy:server
-SKIP_GIT_PULL=1 npm run deploy:server
-HEALTH_URL=http://127.0.0.1:8787/api/health npm run deploy:server
-```
-
-The deploy script requires a clean working tree and an existing production `.env`.
-It pulls latest code, runs `npm ci --include=dev`, builds the app, creates `data/`
-and `logs/`, restarts PM2, saves the PM2 process list, and checks `/api/health`.
+The PM2 deploy script pulls latest code, runs `npm ci --include=dev`, builds the
+app, creates `data/` and `logs/`, restarts PM2, saves the PM2 process list, and
+checks `/api/health`.
 
 Manual deploy:
 
@@ -154,7 +175,7 @@ MIMO_AGENT_MODEL=mimo-v2.5-pro
 MIMO_FAST_MODEL=mimo-v2-flash
 ```
 
-### PM2 / BaoTa
+### Legacy PM2 / BaoTa
 
 ```bash
 npm install
