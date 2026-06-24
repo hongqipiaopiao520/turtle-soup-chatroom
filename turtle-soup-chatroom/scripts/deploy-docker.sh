@@ -45,6 +45,10 @@ check_health() {
   return 1
 }
 
+cleanup_deploy_artifacts() {
+  rm -rf "$APP_ROOT/dist.next" "$APP_ROOT/dist.previous"
+}
+
 sync_dist_to_host() {
   if [ "$SYNC_DIST_TO_HOST" != "1" ]; then
     log "skipping host dist sync"
@@ -78,6 +82,8 @@ if [ ! -f ".env" ]; then
   echo "[deploy:docker] .env not found. Create it from .env.example and set production secrets first." >&2
   exit 1
 fi
+
+cleanup_deploy_artifacts
 
 if [ -n "$(git_in_dir "$GIT_ROOT" status --porcelain -- "$APP_ROOT")" ]; then
   echo "[deploy:docker] working tree is not clean; commit or stash changes before deploying." >&2

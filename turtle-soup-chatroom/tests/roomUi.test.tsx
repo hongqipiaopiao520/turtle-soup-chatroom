@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { HostPanel } from "../src/components/HostPanel";
 import { RoomPage } from "../src/components/RoomPage";
 import { SidePanel } from "../src/components/SidePanel";
 import type { RoomState } from "../src/shared/types";
@@ -161,5 +162,37 @@ describe("room UI settlement", () => {
     expect(markup).toContain('class="side-section chat-section"');
     expect(markup).toContain('class="chat-list"');
     expect(markup).toContain("消息 23");
+  });
+
+  it("renders chat sending feedback while a message is pending", () => {
+    const room = makeSolvedRoom();
+
+    const markup = renderToStaticMarkup(
+      <SidePanel
+        room={room}
+        playerId="player-host"
+        onOpenSettlement={() => undefined}
+        onSendChat={() => undefined}
+        isChatPending
+      />
+    );
+
+    expect(markup).toContain("正在发送");
+  });
+
+  it("renders host judging feedback while the AI host is pending", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false,
+      progress: 46
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} isHostPending />
+    );
+
+    expect(markup).toContain("小歪正在判定");
   });
 });

@@ -17,6 +17,7 @@ export interface AskHostInput {
   history: Array<{ question: string; answer: string }>;
   question: string;
   mode: "question" | "guess";
+  currentProgress?: number;
 }
 
 export interface HostDecision {
@@ -87,9 +88,10 @@ export function parseHostResponse(raw: string): HostDecision {
 
 export function buildHostPrompt(input: AskHostInput) {
   const pointDefinitions = parseSolutionPointDefinitions(input.puzzle.solutionPoints);
+  const currentProgress = clampProgress(input.currentProgress ?? 0);
   const modeRule =
     input.mode === "guess"
-      ? "玩家正在提交最终推理。判断是否已经覆盖汤底关键事实。"
+      ? "玩家正在提交最终推理。按核心逻辑、主要反转和关键因果判断是否已经解出汤底。"
       : "玩家正在普通提问。只能回答是、不是、无关或部分相关，不要泄露汤底。";
 
   return [
@@ -98,11 +100,15 @@ export function buildHostPrompt(input: AskHostInput) {
       content: [
         "你是线上海龟汤游戏的 AI 主持人。",
         "你必须严格基于汤底回答，不能编造新事实。",
+        "参考标准海龟汤玩法：普通提问 QUERY 只回答方向，最终推理 SOLVE 判断玩家理论是否抓住核心真相。",
         "普通提问只允许 answerType 为 yes、no、irrelevant、partial。",
         "推理提交可以使用 answerType solved 或 unsolved。",
-        "每次回复都要评估玩家群体已经接近汤底的完成度 progress，范围 0-100，只能基于关键点覆盖程度给分。",
+        "推理提交不要要求玩家逐字命中关键点；同义表达、合理改写、代词指代和等价因果链都可以视为覆盖。",
+        "只要最终推理覆盖主要反转、核心逻辑、关键因果和核心身份/动机，即使遗漏少量细节，也应判为 solved，progress 给 100。",
+        "如果最终推理很接近但缺少关键因果，answerType 用 unsolved，progress 可给 80-94，并用一句话提示缺少方向，但不要直接泄露汤底。",
+        "每次回复都要评估玩家群体已经接近汤底的完成度 progress，范围 0-100；progress 不能低于已给出的当前完成度。",
         "progress 达到 95 表示已经足以解锁汤底。",
-        "coveredPointIds 只能填写玩家已经明确覆盖的关键点 id，不能因为接近就提前填写。",
+        "coveredPointIds 填写语义上已经覆盖的关键点 id；同义表达也算覆盖，不要卡具体措辞。",
         "输出必须是 JSON，不要 Markdown，不要额外解释。",
         "JSON 格式：{\"answerType\":\"yes|no|irrelevant|partial|solved|unsolved\",\"answer\":\"一句中文回答\",\"progress\":0,\"coveredPointIds\":[\"point-id\"],\"coverageConfidence\":0}"
       ].join("\n")
@@ -113,6 +119,7 @@ export function buildHostPrompt(input: AskHostInput) {
         `汤面：${input.puzzle.surface}`,
         `汤底：${input.puzzle.truth}`,
         `关键点：${pointDefinitions.map((point) => `${point.id}=${point.label}(${point.weight})${point.aliases.length ? ` 同义:${point.aliases.join("/")}` : ""}`).join("；")}`,
+        `当前完成度：${currentProgress}`,
         `历史问答：${input.history.map((item) => `Q:${item.question} A:${item.answer}`).join("\n") || "暂无"}`,
         `规则：${modeRule}`,
         `玩家输入：${input.question}`
@@ -150,7 +157,7 @@ export async function askHost(input: AskHostInput): Promise<HostDecision> {
     if (!response.ok) {
       return {
         answerType: "partial",
-        answer: `汤仙人暂时走神了，请稍后重试。（${response.status}）`,
+        answer: `小歪暂时走神了，请稍后重试。（${response.status}）`,
         progress: 0
       };
     }
@@ -162,7 +169,7 @@ export async function askHost(input: AskHostInput): Promise<HostDecision> {
   } catch {
     return {
       answerType: "partial",
-      answer: "汤仙人暂时走神了，请稍后重试。",
+      answer: "小歪暂时走神了，请稍后重试。",
       progress: 0
     };
   }

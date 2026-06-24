@@ -1042,6 +1042,16 @@ select:focus-visible {
   padding: 8px 10px;
 }
 
+.host-pending {
+  border: 1px solid rgba(95, 140, 134, 0.42);
+  border-radius: 8px;
+  background: rgba(95, 140, 134, 0.1);
+  color: #d8f0c4;
+  line-height: 1.5;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+}
+
 .side-panel {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) minmax(120px, auto);
@@ -1129,6 +1139,15 @@ select:focus-visible {
 .chat-list p {
   color: #d6e4da;
   line-height: 1.5;
+}
+
+.chat-list .chat-pending {
+  border: 1px solid rgba(95, 140, 134, 0.38);
+  border-radius: 8px;
+  background: rgba(95, 140, 134, 0.1);
+  color: #d8f0c4;
+  margin: 8px 0 0;
+  padding: 8px 10px;
 }
 
 .chat-input {

@@ -5,11 +5,13 @@ import type { RoomState } from "../shared/types";
 export function HostPanel({
   room,
   onAsk,
-  onPin
+  onPin,
+  isHostPending = false
 }: {
   room: RoomState;
   onAsk: (question: string, mode: "question" | "guess") => void;
   onPin: (answerId: string) => void;
+  isHostPending?: boolean;
 }) {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"question" | "guess">("question");
@@ -17,7 +19,7 @@ export function HostPanel({
   const remainingQuestions = Math.max(room.questionLimit - room.questionsUsed, 0);
   const isSolved = room.answerUnlocked;
   const isQuestionLimitReached = remainingQuestions === 0;
-  const isDisabled = isSolved || (mode === "question" && isQuestionLimitReached);
+  const isDisabled = isHostPending || isSolved || (mode === "question" && isQuestionLimitReached);
 
   useEffect(() => {
     const log = hostLogRef.current;
@@ -62,7 +64,7 @@ export function HostPanel({
                 <p>{item.question}</p>
               </div>
               <div className="answer-line">
-                <span className="line-label">汤仙人</span>
+                <span className="line-label">小歪</span>
                 <p>{item.answer}</p>
               </div>
               <div className="answer-card-foot">
@@ -89,6 +91,11 @@ export function HostPanel({
       {!isSolved && isQuestionLimitReached && mode === "question" && (
         <p className="flow-hint">普通提问次数已用完，可以继续提交完整推理争取解锁汤底。</p>
       )}
+      {isHostPending && (
+        <p className="host-pending" aria-live="polite">
+          小歪正在判定...
+        </p>
+      )}
       <div className="ask-box">
         <select value={mode} onChange={(event) => setMode(event.target.value as "question" | "guess")}>
           <option value="question">提问</option>
@@ -97,12 +104,18 @@ export function HostPanel({
         <textarea
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              submit();
+            }
+          }}
           maxLength={256}
           disabled={isDisabled}
           placeholder={mode === "question" ? "请提出可以用是/不是/无关回答的问题..." : "提交你的完整推理..."}
         />
         <button className="primary-button" onClick={submit} disabled={isDisabled}>
-          <Send size={16} /> 发送
+          <Send size={16} /> {isHostPending ? "判定中" : "发送"}
         </button>
       </div>
     </section>

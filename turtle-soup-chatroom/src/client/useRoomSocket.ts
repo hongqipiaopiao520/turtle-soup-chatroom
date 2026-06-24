@@ -8,17 +8,27 @@ export function useRoomSocket() {
   const [room, setRoom] = useState<RoomState | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isChatPending, setIsChatPending] = useState(false);
+  const [isHostPending, setIsHostPending] = useState(false);
 
   useEffect(() => {
     const handleRoomSession = (session: RoomSession) => {
       setRoom(session.room);
       setPlayerId(session.playerId);
       setError(null);
+      setIsChatPending(false);
+      setIsHostPending(false);
     };
     const handleRoomState = (nextRoom: RoomState) => {
       setRoom(nextRoom);
+      setIsChatPending(false);
+      setIsHostPending(false);
     };
-    const handleServerError = ({ message }: { message: string }) => setError(message);
+    const handleServerError = ({ message }: { message: string }) => {
+      setError(message);
+      setIsChatPending(false);
+      setIsHostPending(false);
+    };
 
     socket.on("room:session", handleRoomSession);
     socket.on("room:state", handleRoomState);
@@ -36,6 +46,8 @@ export function useRoomSocket() {
     room,
     playerId,
     error,
+    isChatPending,
+    isHostPending,
     createRoom(puzzle: Pick<PublicPuzzle, "id">, playerName: string) {
       socket.emit("room:create", { puzzleId: puzzle.id, playerName });
     },
@@ -46,10 +58,16 @@ export function useRoomSocket() {
       socket.emit("room:rejoin", { roomId, playerId });
     },
     sendChat(body: string) {
-      if (room && playerId) socket.emit("chat:send", { roomId: room.id, playerId, body });
+      if (room && playerId) {
+        setIsChatPending(true);
+        socket.emit("chat:send", { roomId: room.id, playerId, body });
+      }
     },
     askHost(question: string, mode: "question" | "guess") {
-      if (room && playerId) socket.emit("host:ask", { roomId: room.id, playerId, question, mode });
+      if (room && playerId) {
+        setIsHostPending(true);
+        socket.emit("host:ask", { roomId: room.id, playerId, question, mode });
+      }
     },
     pinAnswer(answerId: string) {
       if (room) socket.emit("case:pin", { roomId: room.id, answerId });

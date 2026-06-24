@@ -150,6 +150,8 @@ function PlayerApp() {
         onAsk={roomSocket.askHost}
         onPin={roomSocket.pinAnswer}
         onSendChat={roomSocket.sendChat}
+        isChatPending={roomSocket.isChatPending}
+        isHostPending={roomSocket.isHostPending}
       />
     );
   }

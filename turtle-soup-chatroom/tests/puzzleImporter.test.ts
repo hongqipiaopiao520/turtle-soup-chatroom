@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createFallbackDraft, importPuzzleFromText, parsePuzzleImportResponse } from "../server/puzzleImporter";
+import { buildImportPrompt, createFallbackDraft, importPuzzleFromText, parsePuzzleImportResponse } from "../server/puzzleImporter";
 
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
@@ -211,6 +211,18 @@ describe("importPuzzleFromText", () => {
       "汤面：这是一辆行驶的火车。",
       "汤底：我们是一条由人组成的火车，每一节车厢由人拼接。"
     ].join("\n"))).rejects.toThrow(/AI 返回格式不合格：.*surface.*truth.*solutionPoints/);
+  });
+});
+
+describe("buildImportPrompt", () => {
+  it("asks the AI editor to prepare independent and verifiable key points", () => {
+    const messages = buildImportPrompt("标题：测试\n汤面：测试\n汤底：测试");
+    const systemPrompt = messages[0].content;
+
+    expect(systemPrompt).toContain("独立");
+    expect(systemPrompt).toContain("可验证");
+    expect(systemPrompt).toContain("关键因果");
+    expect(systemPrompt).toContain("不要把同一个事实拆成多个重复点");
   });
 });
 

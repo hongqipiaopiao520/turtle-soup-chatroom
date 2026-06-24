@@ -16,7 +16,9 @@ export function RoomPage({
   onBack,
   onAsk,
   onPin,
-  onSendChat
+  onSendChat,
+  isChatPending = false,
+  isHostPending = false
 }: {
   room: RoomState;
   playerId: string;
@@ -24,6 +26,8 @@ export function RoomPage({
   onAsk: (question: string, mode: "question" | "guess") => void;
   onPin: (answerId: string) => void;
   onSendChat: (body: string) => void;
+  isChatPending?: boolean;
+  isHostPending?: boolean;
 }) {
   const inviteUrl = `${window.location.origin}?room=${room.id}`;
   const [copied, setCopied] = useState(false);
@@ -87,12 +91,13 @@ export function RoomPage({
           </div>
           <p className="surface-text">{room.puzzle.surface}</p>
         </aside>
-        <HostPanel room={room} onAsk={onAsk} onPin={onPin} />
+        <HostPanel room={room} onAsk={onAsk} onPin={onPin} isHostPending={isHostPending} />
         <SidePanel
           room={room}
           playerId={playerId}
           onOpenSettlement={() => setSettlementOpen(true)}
           onSendChat={onSendChat}
+          isChatPending={isChatPending}
         />
       </section>
       {settlementOpen && room.answerUnlocked && (

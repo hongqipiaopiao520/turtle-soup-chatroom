@@ -227,7 +227,8 @@ export function addHostAnswer(
 
   const previousProgress = room.progress;
   const structuredProgress = progressFromCoveredPoints(room.puzzle, answer.coveredPointIds);
-  const reportedProgress = structuredProgress ?? answer.progress;
+  const reportedProgress =
+    answer.answerType === "solved" ? 100 : Math.max(structuredProgress ?? 0, answer.progress ?? 0);
   const nextProgress = Math.max(previousProgress, clampProgress(reportedProgress));
   const progressDelta = nextProgress - previousProgress;
   const crossedUnlock = previousProgress < ANSWER_UNLOCK_PROGRESS && nextProgress >= ANSWER_UNLOCK_PROGRESS;

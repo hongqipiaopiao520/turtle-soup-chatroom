@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { askHost, parseHostResponse, type AskHostInput } from "../server/aiHost";
+import { askHost, buildHostPrompt, parseHostResponse, type AskHostInput } from "../server/aiHost";
 import { loadLocalEnv } from "../server/env";
 
 const originalEnv = { ...process.env };
@@ -165,7 +165,7 @@ describe("askHost", () => {
 
     await expect(askHost(askHostInput)).resolves.toEqual({
       answerType: "partial",
-      answer: "汤仙人暂时走神了，请稍后重试。",
+      answer: "小歪暂时走神了，请稍后重试。",
       progress: 0
     });
   });
@@ -179,9 +179,26 @@ describe("askHost", () => {
 
     await expect(askHost(askHostInput)).resolves.toEqual({
       answerType: "partial",
-      answer: "汤仙人暂时走神了，请稍后重试。",
+      answer: "小歪暂时走神了，请稍后重试。",
       progress: 0
     });
+  });
+});
+
+describe("buildHostPrompt", () => {
+  it("instructs the AI host to judge final guesses by core logic instead of exact wording", () => {
+    const messages = buildHostPrompt({
+      ...askHostInput,
+      mode: "guess",
+      question: "最终推理：这碗汤让他想起事故，所以他哭了。"
+    });
+    const systemPrompt = messages[0].content;
+    const userPrompt = messages[1].content;
+
+    expect(systemPrompt).toContain("同义表达");
+    expect(systemPrompt).toContain("核心逻辑");
+    expect(systemPrompt).toContain("不要要求玩家逐字命中关键点");
+    expect(userPrompt).toContain("最终推理");
   });
 });
 

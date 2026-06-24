@@ -566,7 +566,7 @@ export function createFallbackDraft(rawText: string, sourceUrl?: string, sourceT
   });
 }
 
-function buildImportPrompt(rawText: string) {
+export function buildImportPrompt(rawText: string) {
   return [
     {
       role: "system" as const,
@@ -577,6 +577,8 @@ function buildImportPrompt(rawText: string) {
         "必须使用英文键名：title, surface, truth, solutionPoints, hints, difficulty, tags, qualityScore, qualityIssues, qualitySummary。",
         "difficulty 只能是 easy、medium、hard。",
         "solutionPoints 必须是 3 到 8 个不重复的原子事实，作为后续 AI 主持评分依据。",
+        "每个 solutionPoint 都必须独立、可验证，并覆盖汤底的关键因果、核心诡计或必要身份关系。",
+        "不要机械按原文行数或句子拆点；合并同一事实的状态变化、前后描述和同义表达。",
         "solutionPoints 优先输出字符串格式：权重|point-编号|中文关键事实|中文同义说法1,中文同义说法2；所有权重加总建议为 100。",
         "不要使用英文语义 id，例如 mental_illness；id 用 point-1、point-2 这种编号即可。",
         "tags、hints、qualityIssues 必须是字符串数组；qualityScore 必须是数字。",

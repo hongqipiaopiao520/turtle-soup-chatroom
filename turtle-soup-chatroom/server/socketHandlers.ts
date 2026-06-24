@@ -103,7 +103,8 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
             answer: item.answer
           })),
           question,
-          mode
+          mode,
+          currentProgress: room.progress
         });
 
         addHostAnswer(roomId, {
@@ -112,7 +113,9 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
           question,
           answerType: decision.answerType,
           answer: decision.answer,
-          progress: decision.progress
+          progress: decision.progress,
+          coveredPointIds: decision.coveredPointIds,
+          coverageConfidence: decision.coverageConfidence
         });
 
         const updated = getRoom(roomId);

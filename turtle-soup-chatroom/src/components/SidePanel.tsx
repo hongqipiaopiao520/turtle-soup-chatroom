@@ -6,12 +6,14 @@ export function SidePanel({
   room,
   playerId,
   onOpenSettlement,
-  onSendChat
+  onSendChat,
+  isChatPending = false
 }: {
   room: RoomState;
   playerId: string;
   onOpenSettlement: () => void;
   onSendChat: (body: string) => void;
+  isChatPending?: boolean;
 }) {
   const [chat, setChat] = useState("");
   const chatListRef = useRef<HTMLDivElement>(null);
@@ -82,6 +84,11 @@ export function SidePanel({
               </p>
             ))
           )}
+          {isChatPending && (
+            <p className="chat-pending" aria-live="polite">
+              正在发送...
+            </p>
+          )}
         </div>
         <div className="chat-input">
           <input
@@ -94,8 +101,9 @@ export function SidePanel({
               }
             }}
             placeholder="输入消息..."
+            disabled={isChatPending}
           />
-          <button className="ghost-button" onClick={submitChat}>
+          <button className="ghost-button" onClick={submitChat} disabled={isChatPending}>
             <Send size={15} />
           </button>
         </div>
