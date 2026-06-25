@@ -85,7 +85,7 @@ export function SidePanel({
           </button>
         </div>
       </section>
-      <section className="side-section">
+      <section className="side-section players-section">
         <h2>
           <Users size={17} /> 在线用户 ({room.players.length})
         </h2>
@@ -98,10 +98,15 @@ export function SidePanel({
           ))}
         </div>
       </section>
-      <section className="side-section">
+      <section className="side-section score-section">
         <h2>
           <Award size={17} /> 贡献榜
         </h2>
+        {room.answerUnlocked && (
+          <button className="settlement-button" onClick={onOpenSettlement}>
+            查看结算
+          </button>
+        )}
         <div className="score-list">
           {rankedPlayers.map((player) => (
             <div className="score-row" key={player.id}>
@@ -113,13 +118,8 @@ export function SidePanel({
             </div>
           ))}
         </div>
-        {room.answerUnlocked && (
-          <button className="settlement-button" onClick={onOpenSettlement}>
-            查看结算
-          </button>
-        )}
       </section>
-      <section className="side-section">
+      <section className="side-section notes-section">
         <h2>
           <NotebookTabs size={17} /> 调查卷宗
         </h2>

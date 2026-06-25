@@ -1387,7 +1387,7 @@ select:focus-visible {
   color: #f4dca0;
   cursor: pointer;
   font-weight: 700;
-  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 .chat-section {
@@ -1661,12 +1661,13 @@ select:focus-visible {
 
   .side-panel {
     order: 2;
-    grid-template-rows: minmax(320px, auto) auto auto auto;
+    display: flex;
+    flex-direction: column;
     overflow: visible;
   }
 
   .chat-section {
-    min-height: clamp(320px, 50vh, 520px);
+    min-height: clamp(360px, 52vh, 540px);
   }
 
   .side-panel .side-section:not(.chat-section) {
@@ -1695,6 +1696,18 @@ select:focus-visible {
 
   .score-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 150px;
+    overflow: auto;
+    padding-right: 2px;
+  }
+
+  .settlement-button {
+    margin: 0 0 8px;
+  }
+
+  .notes-section {
+    max-height: 150px;
+    overflow: auto;
   }
 
   .host-panel {

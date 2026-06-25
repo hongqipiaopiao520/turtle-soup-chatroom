@@ -199,6 +199,33 @@ describe("room UI settlement", () => {
     expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("贡献榜"));
   });
 
+  it("keeps the settlement action above a long contribution list", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      players: Array.from({ length: 9 }, (_, index) => ({
+        id: `player-${index}`,
+        name: index === 0 ? "房主" : `玩家${index}`,
+        isHost: index === 0,
+        joinedAt: "2026-06-23T00:00:00.000Z",
+        score: 900 - index * 50,
+        hits: 0,
+        bestDelta: 0
+      }))
+    };
+
+    const markup = renderToStaticMarkup(
+      <SidePanel
+        room={room}
+        playerId="player-0"
+        onOpenSettlement={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    expect(markup).toContain('class="side-section score-section"');
+    expect(markup.indexOf("查看结算")).toBeLessThan(markup.indexOf('class="score-list"'));
+  });
+
   it("renders host judging feedback while the AI host is pending", () => {
     const room = {
       ...makeSolvedRoom(),

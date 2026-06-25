@@ -22,10 +22,14 @@ describe("layout CSS", () => {
   it("prioritizes the mobile side-panel chat area", () => {
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*order:\s*2/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.host-panel\s*\{[^}]*order:\s*3/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.chat-section\s*\{[^}]*min-height:\s*clamp\(320px,\s*50vh,\s*520px\)/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*grid-template-rows:\s*minmax\(320px,\s*auto\) auto auto auto/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*display:\s*flex/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*flex-direction:\s*column/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.chat-section\s*\{[^}]*min-height:\s*clamp\(360px,\s*52vh,\s*540px\)/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel \.side-section:not\(\.chat-section\)\s*\{[^}]*padding:\s*10px/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel \.side-section:not\(\.chat-section\) h2\s*\{[^}]*font-size:\s*14px/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.score-list\s*\{[^}]*max-height:\s*150px/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.score-list\s*\{[^}]*overflow:\s*auto/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.notes-section\s*\{[^}]*max-height:\s*150px/);
   });
 
   it("keeps the room option checkbox compact inside the name dialog", () => {
