@@ -1,6 +1,6 @@
 import { ArrowLeft, Award, BadgeCheck, Compass, KeyRound, Link, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { RoomState } from "../shared/types";
+import type { HostAnswer, RoomState } from "../shared/types";
 import { HostPanel } from "./HostPanel";
 import { SidePanel } from "./SidePanel";
 
@@ -10,6 +10,19 @@ const difficultyLabel = {
   hard: "困难"
 };
 
+function offTrackScore(answer: HostAnswer) {
+  const answerTypeScore =
+    answer.answerType === "unsolved" ? 80 : answer.answerType === "irrelevant" ? 50 : answer.answerType === "no" ? 25 : 0;
+  const wordingScore = Math.min(answer.question.length, 80) / 2;
+  return answerTypeScore + wordingScore;
+}
+
+function selectLeastUsefulQuestion(hostLog: HostAnswer[]) {
+  return [...hostLog]
+    .filter((item) => item.progressDelta === 0 && item.contributionScore === 0 && item.answerType !== "solved")
+    .sort((a, b) => offTrackScore(b) - offTrackScore(a) || Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+}
+
 export function RoomPage({
   room,
   playerId,
@@ -17,8 +30,7 @@ export function RoomPage({
   onAsk,
   onPin,
   onSendChat,
-  isChatPending = false,
-  isHostPending = false
+  isChatPending = false
 }: {
   room: RoomState;
   playerId: string;
@@ -27,7 +39,6 @@ export function RoomPage({
   onPin: (answerId: string) => void;
   onSendChat: (body: string) => void;
   isChatPending?: boolean;
-  isHostPending?: boolean;
 }) {
   const inviteUrl = `${window.location.origin}?room=${room.id}`;
   const [copied, setCopied] = useState(false);
@@ -48,9 +59,7 @@ export function RoomPage({
     .filter((item) => item.progressDelta > 0 || item.contributionScore > 0)
     .sort((a, b) => b.contributionScore - a.contributionScore || b.progressDelta - a.progressDelta)
     .slice(0, 3);
-  const leastUsefulQuestion = [...room.hostLog]
-    .filter((item) => item.progressDelta === 0 && item.answerType !== "solved")
-    .sort((a, b) => a.contributionScore - b.contributionScore)[0];
+  const leastUsefulQuestion = selectLeastUsefulQuestion(room.hostLog);
 
   useEffect(() => {
     if (room.answerUnlocked && lastUnlockedRoomRef.current !== room.id) {
@@ -101,7 +110,7 @@ export function RoomPage({
           </div>
           <p className="surface-text">{room.puzzle.surface}</p>
         </aside>
-        <HostPanel room={room} onAsk={onAsk} onPin={onPin} isHostPending={isHostPending} />
+        <HostPanel room={room} onAsk={onAsk} onPin={onPin} />
         <SidePanel
           room={room}
           playerId={playerId}

@@ -650,8 +650,45 @@ select:focus-visible {
   gap: 8px;
 }
 
+.admin-image-import-form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-image-preview {
+  grid-column: 1 / -1;
+  min-height: 180px;
+  resize: vertical;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.admin-image-paste-zone {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+  border: 1px dashed rgba(95, 140, 134, 0.56);
+  border-radius: 8px;
+  background: rgba(95, 140, 134, 0.08);
+  color: var(--text);
+  cursor: text;
+  padding: 14px;
+}
+
+.admin-image-paste-zone:focus-visible {
+  outline: 2px solid rgba(216, 168, 79, 0.72);
+  outline-offset: 2px;
+}
+
+.admin-image-paste-zone span {
+  color: var(--muted);
+}
+
 .admin-file-import-form span,
-.admin-file-import-form strong {
+.admin-file-import-form strong,
+.admin-image-import-form span {
   color: var(--muted);
   overflow-wrap: anywhere;
 }
@@ -859,6 +896,7 @@ select:focus-visible {
   .admin-import-panel,
   .admin-import-form,
   .admin-file-import-form,
+  .admin-image-import-form,
   .admin-workbench,
   .admin-editor-grid {
     grid-template-columns: 1fr;

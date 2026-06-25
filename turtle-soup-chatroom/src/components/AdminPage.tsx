@@ -1,10 +1,13 @@
 import { Check, DownloadCloud, RefreshCw, Save, Search, ShieldCheck, X } from "lucide-react";
-import type { ChangeEvent, Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
+import type { ChangeEvent, ClipboardEvent, Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  type AdminBatchImportFailure,
+  type AdminImageImportResult,
   fetchAdminPuzzles,
   importAdminPuzzleBatch,
   importAdminPuzzleText,
+  parseAdminPuzzleImages,
   publishAdminPuzzleBatch,
   publishAdminPuzzle,
   rejectAdminPuzzle,
@@ -15,6 +18,8 @@ import type { Difficulty, ManagedPuzzle, PuzzleStatus } from "../shared/types";
 import { SelectField } from "./ui";
 
 type AdminStatusFilter = PuzzleStatus | "all";
+
+const MAX_IMAGE_TOTAL_BYTES = 12 * 1024 * 1024;
 
 interface AdminDraft {
   title: string;
@@ -34,7 +39,7 @@ interface AdminDraft {
 
 export function formatBatchImportMessage(input: {
   imported: number;
-  failed: Array<{ index: number; message: string }>;
+  failed: Array<{ index: number; message: string; rawText?: string }>;
 }) {
   if (input.failed.length === 0) return `已导入 ${input.imported} 条`;
   const shownFailures = input.failed
@@ -43,7 +48,7 @@ export function formatBatchImportMessage(input: {
     .join("；");
   const hiddenCount = input.failed.length - 5;
   const suffix = hiddenCount > 0 ? `；另有 ${hiddenCount} 条失败` : "";
-  return `已导入 ${input.imported} 条，失败 ${input.failed.length} 条：${shownFailures}${suffix}`;
+  return `已导入 ${input.imported} 条，失败 ${input.failed.length} 条：${shownFailures}${suffix}。失败项已保留，可重试或下载清单。`;
 }
 
 export function AdminPage({
@@ -62,7 +67,11 @@ export function AdminPage({
   const [sourceTitle, setSourceTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [fileItems, setFileItems] = useState<ParsedPuzzleFileItem[]>([]);
+  const [failedFileItems, setFailedFileItems] = useState<AdminBatchImportFailure[]>([]);
   const [fileImportName, setFileImportName] = useState("");
+  const [imageItems, setImageItems] = useState<Array<{ file: File; role: "auto" | "surface" | "truth" | "full" }>>([]);
+  const [imageImportResult, setImageImportResult] = useState<AdminImageImportResult | null>(null);
+  const [imageRawText, setImageRawText] = useState("");
   const [message, setMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -127,7 +136,7 @@ export function AdminPage({
       setPuzzles((current) => [imported, ...current.filter((item) => item.id !== imported.id)]);
       setSelectedId(imported.id);
       setRawImport("");
-      setMessage("已导入，等待审核");
+      setMessage("已导入并发布");
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
@@ -142,18 +151,110 @@ export function AdminPage({
     const items = parsePuzzleFileContent({ filename: file.name, content });
     setFileImportName(file.name);
     setFileItems(items);
+    setFailedFileItems([]);
     setMessage(items.length > 0 ? `已解析 ${items.length} 条，确认后导入` : "没有解析到可导入题目");
   }
 
-  async function importFileItems() {
-    if (fileItems.length === 0) {
+  async function chooseImageFiles(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []).slice(0, 6);
+    if (files.length === 0) return;
+    const items = await imageFilesToItems(files);
+    setImageItems(items);
+    setImageImportResult(null);
+    setImageRawText("");
+    setMessage(`已选择 ${items.length} 张图片，共 ${formatBytes(getImageItemsBytes(items))}`);
+  }
+
+  async function pasteImageFiles(event: ClipboardEvent<HTMLDivElement>) {
+    const files = Array.from(event.clipboardData.items)
+      .filter((item) => item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file))
+      .slice(0, 6);
+    if (files.length === 0) {
+      setMessage("剪贴板里没有图片，请复制网页图片后再粘贴");
+      return;
+    }
+    event.preventDefault();
+    const items = await imageFilesToItems(files, imageItems.length);
+    const nextItems = [...imageItems, ...items].slice(0, 6);
+    setImageItems(nextItems);
+    setImageImportResult(null);
+    setImageRawText("");
+    setMessage(`已粘贴 ${items.length} 张图片，共 ${nextItems.length} 张，合计 ${formatBytes(getImageItemsBytes(nextItems))}`);
+  }
+
+  async function imageFilesToItems(files: File[], offset = 0) {
+    return Promise.all(files.map(async (file, index) => ({
+      file,
+      role: offset + index === 0 ? "surface" as const : offset + index === 1 ? "truth" as const : "auto" as const
+    })));
+  }
+
+  async function parseImageItems() {
+    if (imageItems.length === 0) {
+      setMessage("请先选择图片");
+      return;
+    }
+    setIsBusy(true);
+    setMessage("正在解析图片...");
+    try {
+      const totalBytes = getImageItemsBytes(imageItems);
+      if (totalBytes > MAX_IMAGE_TOTAL_BYTES) {
+        setMessage(`图片合计 ${formatBytes(totalBytes)}，超过 ${formatBytes(MAX_IMAGE_TOTAL_BYTES)}，请减少图片数量或裁剪长图后再试`);
+        return;
+      }
+      const result = await parseAdminPuzzleImages({
+        images: imageItems.map(({ file, role }) => ({ file, role }))
+      }, { token: token.trim() || undefined });
+      setImageImportResult(result);
+      setImageRawText(result.rawText);
+      setMessage(result.correctedNotes.length > 0 ? `图片已解析：${result.correctedNotes.join("；")}` : "图片已解析，请确认文本后导入");
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function importImageRawText() {
+    const rawText = imageRawText.trim();
+    if (!rawText) {
+      setMessage("请先解析图片");
+      return;
+    }
+    setIsBusy(true);
+    setMessage("正在导入图片题目...");
+    try {
+      const imported = await importAdminPuzzleText(
+          {
+            rawText,
+          sourceTitle: imageItems.length > 0 ? `图片导入：${imageItems.map((item) => item.file.name).join(", ")}` : "图片导入"
+        },
+        { token: token.trim() || undefined }
+      );
+      setPuzzles((current) => [imported, ...current.filter((item) => item.id !== imported.id)]);
+      setSelectedId(imported.id);
+      setImageItems([]);
+      setImageImportResult(null);
+      setImageRawText("");
+      setMessage("图片题目已导入并发布");
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function importFileItems(items = fileItems) {
+    if (items.length === 0) {
       setMessage("请先选择文件");
       return;
     }
     setIsBusy(true);
     setMessage("正在批量导入...");
     try {
-      const result = await importAdminPuzzleBatch(fileItems, { token: token.trim() || undefined });
+      const result = await importAdminPuzzleBatch(items, { token: token.trim() || undefined });
       setPuzzles((current) => [
         ...result.imported,
         ...current.filter((item) => !result.imported.some((imported) => imported.id === item.id))
@@ -162,6 +263,7 @@ export function AdminPage({
       if (result.failed.length === 0) {
         setFileItems([]);
       }
+      setFailedFileItems(result.failed);
       setMessage(formatBatchImportMessage({
         imported: result.imported.length,
         failed: result.failed
@@ -171,6 +273,22 @@ export function AdminPage({
     } finally {
       setIsBusy(false);
     }
+  }
+
+  function retryFailedFileItems() {
+    void importFileItems(failedFileItems.map(({ rawText, sourceTitle, sourceUrl }) => ({ rawText, sourceTitle, sourceUrl })));
+  }
+
+  function downloadFailedFileItems() {
+    if (failedFileItems.length === 0) return;
+    const content = JSON.stringify(failedFileItems, null, 2);
+    const blob = new Blob([content], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${fileImportName || "puzzle-import"}-failed.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   async function saveSelected(event: FormEvent) {
@@ -257,6 +375,14 @@ export function AdminPage({
     });
   }
 
+  function selectAllVisible() {
+    setSelectedIds(puzzles.map((puzzle) => puzzle.id));
+  }
+
+  function clearSelected() {
+    setSelectedIds([]);
+  }
+
   return (
     <main className="admin-shell">
       <header className="admin-topbar">
@@ -325,9 +451,57 @@ export function AdminPage({
           </label>
           <span>{fileImportName || "未选择文件"}</span>
           <strong>{fileItems.length > 0 ? `${fileItems.length} 条待导入` : "支持 .txt/.md/.csv"}</strong>
-          <button className="primary-button" type="button" onClick={importFileItems} disabled={isBusy || fileItems.length === 0}>
+          <button className="primary-button" type="button" onClick={() => void importFileItems()} disabled={isBusy || fileItems.length === 0}>
             导入文件题目
           </button>
+          {failedFileItems.length > 0 && (
+            <>
+              <strong>{failedFileItems.length} 条失败项已保留</strong>
+              <button className="ghost-button" type="button" onClick={retryFailedFileItems} disabled={isBusy}>
+                <RefreshCw size={16} /> 重试失败项
+              </button>
+              <button className="ghost-button" type="button" onClick={downloadFailedFileItems} disabled={isBusy}>
+                <DownloadCloud size={16} /> 下载失败清单
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
+      <section className="admin-import-panel admin-image-import-panel">
+        <div>
+          <h2>图片导入</h2>
+          <p>上传汤面、汤底截图，AI 会保留原换行并修正明显错别字。</p>
+        </div>
+        <div className="admin-image-import-form">
+          <div
+            className="admin-image-paste-zone"
+            tabIndex={0}
+            role="button"
+            onPaste={pasteImageFiles}
+          >
+            <strong>点击这里后直接粘贴网页图片</strong>
+            <span>支持从网页、微信、截图工具复制图片后粘贴，最多 6 张。</span>
+          </div>
+          <label className="ghost-button">
+            <DownloadCloud size={16} /> 选择图片
+            <input type="file" accept="image/*" multiple onChange={chooseImageFiles} hidden />
+          </label>
+          <span>{imageItems.length > 0 ? `${imageItems.length} 张图片` : "支持多张截图"}</span>
+          <button className="ghost-button" type="button" onClick={parseImageItems} disabled={isBusy || imageItems.length === 0}>
+            <RefreshCw size={16} /> 解析图片
+          </button>
+          <button className="primary-button" type="button" onClick={() => void importImageRawText()} disabled={isBusy || !imageRawText.trim()}>
+            导入并发布
+          </button>
+          {imageImportResult && (
+            <textarea
+              className="admin-image-preview"
+              value={imageRawText}
+              onChange={(event) => setImageRawText(event.target.value)}
+              placeholder="图片解析结果会显示在这里，原换行会保留..."
+            />
+          )}
         </div>
       </section>
 
@@ -339,6 +513,12 @@ export function AdminPage({
           </div>
           <div className="admin-bulk-actions">
             <span>已选择 {selectedIds.length} 条</span>
+            <button className="ghost-button" type="button" onClick={selectAllVisible} disabled={isBusy || puzzles.length === 0}>
+              全选当前列表
+            </button>
+            <button className="ghost-button" type="button" onClick={clearSelected} disabled={isBusy || selectedIds.length === 0}>
+              清空选择
+            </button>
             <button className="primary-button" type="button" onClick={publishSelectedBatch} disabled={isBusy || selectedIds.length === 0}>
               <Check size={16} /> 批量发布
             </button>
@@ -508,6 +688,15 @@ function splitLines(value: string) {
 
 function splitTags(value: string) {
   return value.split(/[,，\n]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function getImageItemsBytes(items: Array<{ file: File }>) {
+  return items.reduce((sum, item) => sum + item.file.size, 0);
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function setDraftField<T extends keyof AdminDraft>(

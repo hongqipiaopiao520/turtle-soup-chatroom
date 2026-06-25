@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   fetchAdminPuzzles,
   importAdminPuzzleText,
+  parseAdminPuzzleImages,
   publishAdminPuzzleBatch,
   publishAdminPuzzle,
   rejectAdminPuzzle,
@@ -41,6 +42,33 @@ describe("admin puzzle client", () => {
       headers: { "Content-Type": "application/json", Authorization: "Bearer secret" },
       body: JSON.stringify({ rawText: "题目原文", sourceTitle: "来源", sourceUrl: "https://example.test/a" })
     });
+  });
+
+  it("parses puzzle screenshots through the admin API", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({
+      rawText: "标题：图导入\n汤面：第一行\n第二行\n汤底：真相"
+    }));
+    const surface = makeTestFile("surface", "surface.png");
+    const truth = makeTestFile("truth", "truth.png");
+
+    await parseAdminPuzzleImages(
+      {
+        images: [
+          { file: surface, role: "surface" },
+          { file: truth, role: "truth" }
+        ]
+      },
+      { token: "secret", fetcher: fetcher as unknown as typeof fetch }
+    );
+
+    expect(fetcher).toHaveBeenCalledWith("/api/admin/puzzles/import-images/parse", {
+      method: "POST",
+      headers: { Authorization: "Bearer secret" },
+      body: expect.any(FormData)
+    });
+    const body = fetcher.mock.calls[0]?.[1]?.body as FormData;
+    expect(body.getAll("images").map((file) => (file as File).name)).toEqual(["surface.png", "truth.png"]);
+    expect(body.getAll("roles")).toEqual(["surface", "truth"]);
   });
 
   it("updates a managed puzzle", async () => {
@@ -114,3 +142,9 @@ describe("admin puzzle client", () => {
     await expect(fetchAdminPuzzles({ fetcher: fetcher as unknown as typeof fetch })).rejects.toThrow("未授权");
   });
 });
+
+function makeTestFile(content: string, name: string) {
+  const file = new Blob([content], { type: "image/png" }) as File;
+  Object.defineProperty(file, "name", { value: name });
+  return file;
+}

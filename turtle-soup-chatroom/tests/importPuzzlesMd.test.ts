@@ -104,13 +104,14 @@ describe("markdown puzzle import", () => {
     expect(rows[1].title).toBe("宿舍");
   });
 
-  it("converts a parsed row into a reviewing managed puzzle", () => {
+  it("converts a parsed row into an auto-published managed puzzle", () => {
     const [row] = parseMarkdownPuzzleTable(sampleTable);
     const puzzle = convertMarkdownRowToPuzzle(row);
 
     expect(puzzle.id).toBe("md-1-mei-mei-de-fang-jian");
     expect(puzzle.title).toBe("妹妹的房间");
-    expect(puzzle.status).toBe("reviewing");
+    expect(puzzle.status).toBe("published");
+    expect(puzzle.publishedAt).toBeTruthy();
     expect(puzzle.rawText).toContain("汤面：妹妹的房间传来声音");
     expect(puzzle.solutionPoints.length).toBeGreaterThanOrEqual(1);
     expect(puzzle.tags).toContain("许二木");
@@ -154,7 +155,7 @@ describe("markdown puzzle import", () => {
     ]);
   });
 
-  it("imports parsed rows into a sqlite review queue", () => {
+  it("imports parsed rows into sqlite as published puzzles", () => {
     const db = openDatabase(makeDbPath());
     const repository = createPuzzleRepository(db);
 
@@ -165,11 +166,11 @@ describe("markdown puzzle import", () => {
     });
 
     expect(result).toEqual({ imported: 2, skipped: 0 });
-    expect(repository.listManaged("reviewing").map((puzzle) => puzzle.title).sort()).toEqual(["妹妹的房间", "歌声"].sort());
+    expect(repository.listManaged("published").map((puzzle) => puzzle.title).sort()).toEqual(["妹妹的房间", "歌声"].sort());
     db.close();
   });
 
-  it("imports markdown heading sections into a sqlite review queue", () => {
+  it("imports markdown heading sections into sqlite as published puzzles", () => {
     const db = openDatabase(makeDbPath());
     const repository = createPuzzleRepository(db);
 
@@ -179,7 +180,7 @@ describe("markdown puzzle import", () => {
     });
 
     expect(result).toEqual({ imported: 2, skipped: 0 });
-    const puzzles = repository.listManaged("reviewing").sort((left, right) => left.title.localeCompare(right.title));
+    const puzzles = repository.listManaged("published").sort((left, right) => left.title.localeCompare(right.title));
     expect(puzzles.map((puzzle) => puzzle.title)).toEqual(["妹妹的房间", "宿舍"]);
     expect(puzzles[0].surface).toBe("妹妹的房间传来很多球鞋摩擦地板的声音。");
     expect(puzzles[0].truth).toBe("妹妹的棺椁被打开，里面躲着很多老鼠。");

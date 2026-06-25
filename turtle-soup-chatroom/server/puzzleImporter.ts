@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { Difficulty, ManagedPuzzle, SolutionPointDefinition } from "../src/shared/types";
+import { createHash } from "node:crypto";
+import type { Difficulty, ManagedPuzzle, PuzzleStatus, SolutionPointDefinition } from "../src/shared/types";
 import { getAiHostConfig } from "./aiHost";
 
 const PuzzleImportSchema = z.object({
@@ -21,12 +22,17 @@ export interface PuzzleImportResult {
   puzzle: ManagedPuzzle;
 }
 
-function id(prefix: string) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
-}
-
 function normalizeRawText(rawText: string) {
   return rawText.trim().replace(/\r\n/g, "\n");
+}
+
+export function createImportFingerprintId(rawText: string, sourceUrl?: string, sourceTitle?: string) {
+  const fingerprint = [
+    normalizeRawText(rawText),
+    sourceUrl?.trim() ?? "",
+    sourceTitle?.trim() ?? ""
+  ].join("\n---source---\n");
+  return `import_${createHash("sha256").update(fingerprint).digest("hex").slice(0, 16)}`;
 }
 
 function importTimeoutMs() {
@@ -484,13 +490,15 @@ function createManagedPuzzle(input: {
   qualityScore: number;
   qualityIssues: string[];
   qualitySummary: string;
-  status: "draft" | "reviewing";
+  status: PuzzleStatus;
   sourceUrl?: string;
   sourceTitle?: string;
 }): ManagedPuzzle {
   const now = new Date().toISOString();
+  const fingerprintText = input.rawText || [input.title, input.surface, input.truth].join("\n");
+  const publishedAt = input.status === "published" ? now : undefined;
   return {
-    id: id("puzzle"),
+    id: createImportFingerprintId(fingerprintText, input.sourceUrl, input.sourceTitle),
     title: input.title,
     surface: input.surface,
     truth: input.truth,
@@ -514,6 +522,8 @@ function createManagedPuzzle(input: {
     qualityScore: Math.round(input.qualityScore),
     qualityIssues: input.qualityIssues,
     qualitySummary: input.qualitySummary,
+    reviewedAt: publishedAt,
+    publishedAt,
     updatedAt: now
   };
 }
@@ -534,7 +544,7 @@ export function parsePuzzleImportResponse(raw: string, rawText = "", sourceUrl?:
     qualityScore: parsed.qualityScore,
     qualityIssues: parsed.qualityIssues,
     qualitySummary: parsed.qualitySummary,
-    status: "reviewing"
+    status: "published"
   });
 }
 

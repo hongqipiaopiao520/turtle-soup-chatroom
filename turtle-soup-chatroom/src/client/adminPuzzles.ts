@@ -13,9 +13,26 @@ export interface AdminPuzzleImportInput {
 
 export type AdminBatchImportItem = AdminPuzzleImportInput;
 
+export interface AdminImageImportInput {
+  images: Array<{ file: File; role?: "auto" | "surface" | "truth" | "full" }>;
+}
+
+export interface AdminImageImportResult {
+  title: string;
+  surface: string;
+  truth: string;
+  rawText: string;
+  correctedNotes: string[];
+}
+
 export interface AdminBatchImportResult {
   imported: ManagedPuzzle[];
-  failed: Array<{ index: number; message: string }>;
+  failed: Array<AdminBatchImportFailure>;
+}
+
+export interface AdminBatchImportFailure extends AdminBatchImportItem {
+  index: number;
+  message: string;
 }
 
 export interface AdminBatchPublishResult {
@@ -97,6 +114,23 @@ export function importAdminPuzzleBatch(items: AdminBatchImportItem[], options: A
       method: "POST",
       headers: headers(options, true),
       body: JSON.stringify({ items })
+    },
+    options
+  );
+}
+
+export function parseAdminPuzzleImages(input: AdminImageImportInput, options: AdminClientOptions = {}) {
+  const body = new FormData();
+  for (const image of input.images) {
+    body.append("images", image.file, image.file.name);
+    body.append("roles", image.role ?? "auto");
+  }
+  return adminFetch<AdminImageImportResult>(
+    "/api/admin/puzzles/import-images/parse",
+    {
+      method: "POST",
+      headers: headers(options),
+      body
     },
     options
   );

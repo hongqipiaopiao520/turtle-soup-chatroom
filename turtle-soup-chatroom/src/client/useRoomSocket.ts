@@ -9,7 +9,6 @@ export function useRoomSocket() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isChatPending, setIsChatPending] = useState(false);
-  const [isHostPending, setIsHostPending] = useState(false);
 
   useEffect(() => {
     const handleRoomSession = (session: RoomSession) => {
@@ -17,17 +16,14 @@ export function useRoomSocket() {
       setPlayerId(session.playerId);
       setError(null);
       setIsChatPending(false);
-      setIsHostPending(false);
     };
     const handleRoomState = (nextRoom: RoomState) => {
       setRoom(nextRoom);
       setIsChatPending(false);
-      setIsHostPending(false);
     };
     const handleServerError = ({ message }: { message: string }) => {
       setError(message);
       setIsChatPending(false);
-      setIsHostPending(false);
     };
 
     socket.on("room:session", handleRoomSession);
@@ -47,7 +43,6 @@ export function useRoomSocket() {
     playerId,
     error,
     isChatPending,
-    isHostPending: isHostPending || Boolean(room?.hostPending),
     createRoom(puzzle: Pick<PublicPuzzle, "id">, playerName: string, options?: { questionLimit?: number }) {
       socket.emit("room:create", { puzzleId: puzzle.id, playerName, questionLimit: options?.questionLimit });
     },
@@ -65,7 +60,6 @@ export function useRoomSocket() {
     },
     askHost(question: string, mode: "question" | "guess") {
       if (room && playerId) {
-        setIsHostPending(true);
         socket.emit("host:ask", { roomId: room.id, playerId, question, mode });
       }
     },
@@ -79,7 +73,6 @@ export function useRoomSocket() {
       setRoom(null);
       setPlayerId(null);
       setIsChatPending(false);
-      setIsHostPending(false);
     }
   };
 }

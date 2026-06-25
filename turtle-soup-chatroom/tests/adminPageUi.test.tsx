@@ -55,12 +55,28 @@ describe("AdminPage", () => {
     expect(markup).toContain("支持 .txt/.md/.csv");
   });
 
+  it("renders image import controls with editable preview flow", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
+    );
+
+    expect(markup).toContain("图片导入");
+    expect(markup).toContain("点击这里后直接粘贴网页图片");
+    expect(markup).toContain("选择图片");
+    expect(markup).toContain("解析图片");
+    expect(markup).toContain("导入并发布");
+    expect(markup).toContain('accept="image/*"');
+    expect(markup).toContain("tabindex=\"0\"");
+  });
+
   it("renders bulk review controls for publishing selected puzzles", () => {
     const markup = renderToStaticMarkup(
       <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
     );
 
     expect(markup).toContain("批量发布");
+    expect(markup).toContain("全选当前列表");
+    expect(markup).toContain("清空选择");
     expect(markup).toContain('type="checkbox"');
     expect(markup).toContain("选择题目");
   });
@@ -80,12 +96,12 @@ describe("AdminPage", () => {
     expect(formatBatchImportMessage({
       imported: 2,
       failed: [
-        { index: 0, message: "AI 返回格式不合格：solutionPoints 至少 1 个/字" },
-        { index: 2, message: "AI 增强失败：请求超时" },
-        { index: 4, message: "AI 返回格式不合格：JSON 解析失败" }
+        { index: 0, message: "AI 返回格式不合格：solutionPoints 至少 1 个/字", rawText: "A" },
+        { index: 2, message: "AI 增强失败：请求超时", rawText: "B" },
+        { index: 4, message: "AI 返回格式不合格：JSON 解析失败", rawText: "C" }
       ]
     })).toBe(
-      "已导入 2 条，失败 3 条：第 1 条 AI 返回格式不合格：solutionPoints 至少 1 个/字；第 3 条 AI 增强失败：请求超时；第 5 条 AI 返回格式不合格：JSON 解析失败"
+      "已导入 2 条，失败 3 条：第 1 条 AI 返回格式不合格：solutionPoints 至少 1 个/字；第 3 条 AI 增强失败：请求超时；第 5 条 AI 返回格式不合格：JSON 解析失败。失败项已保留，可重试或下载清单。"
     );
   });
 });

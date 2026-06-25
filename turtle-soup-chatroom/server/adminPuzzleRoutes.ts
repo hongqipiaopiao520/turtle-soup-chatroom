@@ -1,6 +1,8 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import { z } from "zod";
 import type { ManagedPuzzle, PuzzleStatus } from "../src/shared/types";
+import { importPuzzleTextFromImages } from "./imagePuzzleImporter";
+import { parseMultipartImageUpload } from "./multipartImageUpload";
 import { createFallbackDraft, importPuzzleFromText } from "./puzzleImporter";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
 
@@ -16,6 +18,13 @@ const ImportBatchSchema = z.object({
     sourceTitle: z.string().trim().max(160).optional(),
     sourceUrl: z.string().trim().url().optional().or(z.literal(""))
   })).min(1).max(100)
+});
+
+const ImportImagesSchema = z.object({
+  images: z.array(z.object({
+    dataUrl: z.string().trim().startsWith("data:image/").max(6_000_000),
+    role: z.enum(["auto", "surface", "truth", "full"]).optional()
+  })).min(1).max(6)
 });
 
 const AdminPuzzleUpdateSchema = z.object({
@@ -56,7 +65,7 @@ export async function importTextWithAi(repository: PuzzleRepository, input: Impo
 export async function importBatchWithAi(repository: PuzzleRepository, input: unknown) {
   const parsed = ImportBatchSchema.parse(input);
   const imported: ManagedPuzzle[] = [];
-  const failed: Array<{ index: number; message: string }> = [];
+  const failed: Array<{ index: number; message: string; rawText: string; sourceTitle?: string; sourceUrl?: string }> = [];
 
   for (let index = 0; index < parsed.items.length; index += 1) {
     const item = parsed.items[index];
@@ -67,7 +76,13 @@ export async function importBatchWithAi(repository: PuzzleRepository, input: unk
         sourceUrl: item.sourceUrl || undefined
       }));
     } catch (error) {
-      failed.push({ index, message: error instanceof Error ? error.message : "导入失败" });
+      failed.push({
+        index,
+        message: error instanceof Error ? error.message : "导入失败",
+        rawText: item.rawText,
+        sourceTitle: item.sourceTitle,
+        sourceUrl: item.sourceUrl || undefined
+      });
     }
   }
 
@@ -126,6 +141,17 @@ export function createAdminPuzzleRouter(repository: PuzzleRepository) {
       response.status(201).json(await importBatchWithAi(repository, request.body));
     } catch (error) {
       response.status(400).json({ message: error instanceof Error ? error.message : "批量导入失败" });
+    }
+  });
+
+  router.post("/puzzles/import-images/parse", raw({ type: "multipart/form-data", limit: "12mb" }), async (request, response) => {
+    try {
+      const parsed = Buffer.isBuffer(request.body)
+        ? parseMultipartImageUpload(request.body, request.header("content-type"))
+        : ImportImagesSchema.parse(request.body);
+      response.json(await importPuzzleTextFromImages(parsed));
+    } catch (error) {
+      response.status(400).json({ message: error instanceof Error ? error.message : "图片解析失败" });
     }
   });
 

@@ -92,10 +92,11 @@ describe("admin puzzle helpers", () => {
 
     const puzzle = await importTextWithAi(repository, { rawText: "原始题目" });
 
-    expect(puzzle.status).toBe("reviewing");
+    expect(puzzle.status).toBe("published");
+    expect(puzzle.publishedAt).toBeTruthy();
     expect(puzzle.title).toBe("结构化题");
     expect(puzzle.solutionPoints).toEqual(["50|point-1|铃声是信号", "50|point-2|事先有约定"]);
-    expect(repository.listManaged("reviewing")).toHaveLength(1);
+    expect(repository.listManaged("published")).toHaveLength(1);
     db.close();
   });
 
@@ -136,8 +137,14 @@ describe("admin puzzle helpers", () => {
     });
 
     expect(result.imported).toHaveLength(1);
-    expect(result.imported[0]).toMatchObject({ title: "A", surface: "一", truth: "二", status: "reviewing" });
-    expect(result.failed).toEqual([{ index: 1, message: "AI 增强失败：HTTP 429" }]);
+    expect(result.imported[0]).toMatchObject({ title: "A", surface: "一", truth: "二", status: "published" });
+    expect(result.imported[0].publishedAt).toBeTruthy();
+    expect(result.failed).toEqual([{
+      index: 1,
+      message: "AI 增强失败：HTTP 429",
+      rawText: "标题：B\n汤面：三\n汤底：四",
+      sourceTitle: "文件B"
+    }]);
     expect(repository.listManaged()).toHaveLength(1);
     db.close();
   });

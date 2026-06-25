@@ -255,9 +255,10 @@ function qualityScoreFor(row, issues) {
   return Math.max(20, Math.min(90, score));
 }
 
-export function convertMarkdownRowToPuzzle(row, status = "reviewing") {
+export function convertMarkdownRowToPuzzle(row, status = "published") {
   const now = new Date().toISOString();
   const issues = qualityIssuesFor(row);
+  const publishedAt = status === "published" ? now : undefined;
   const rawText = [
     `标题：${row.title}`,
     `汤面：${row.surface}`,
@@ -285,7 +286,9 @@ export function convertMarkdownRowToPuzzle(row, status = "reviewing") {
     estimatedMinutes: 15,
     qualityScore: qualityScoreFor(row, issues),
     qualityIssues: issues,
-    qualitySummary: issues.length > 0 ? "已导入审核队列，建议处理质量问题后发布。" : "结构完整，等待人工审核。",
+    qualitySummary: issues.length > 0 ? "已导入并发布，建议继续处理质量问题。" : "结构完整，已自动发布。",
+    reviewedAt: publishedAt,
+    publishedAt,
     updatedAt: now
   };
 }
@@ -302,7 +305,7 @@ export function importMarkdownPuzzles(options) {
       skipped += 1;
       continue;
     }
-    options.repository.upsertManaged(convertMarkdownRowToPuzzle(row, options.status ?? "reviewing"));
+    options.repository.upsertManaged(convertMarkdownRowToPuzzle(row, options.status ?? "published"));
     imported += 1;
   }
 
@@ -310,7 +313,7 @@ export function importMarkdownPuzzles(options) {
 }
 
 function parseArgs(argv) {
-  const options = { status: "reviewing" };
+  const options = { status: "published" };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     const value = argv[index + 1];

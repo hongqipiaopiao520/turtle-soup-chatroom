@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildImportPrompt, createFallbackDraft, importPuzzleFromText, parsePuzzleImportResponse } from "../server/puzzleImporter";
+import { buildImportPrompt, createFallbackDraft, createImportFingerprintId, importPuzzleFromText, parsePuzzleImportResponse } from "../server/puzzleImporter";
 
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
@@ -17,6 +17,16 @@ afterEach(() => {
 });
 
 describe("parsePuzzleImportResponse", () => {
+  it("creates stable import ids so duplicate raw imports upsert the same puzzle", () => {
+    const first = createImportFingerprintId("标题：雨夜站台\n汤面：女孩消失。", "https://example.test/a", "来源 A");
+    const second = createImportFingerprintId("标题：雨夜站台\r\n汤面：女孩消失。", "https://example.test/a", "来源 A");
+    const different = createImportFingerprintId("标题：雨夜站台\n汤面：女孩消失。", "https://example.test/b", "来源 A");
+
+    expect(first).toBe(second);
+    expect(first).toMatch(/^import_[a-f0-9]{16}$/);
+    expect(different).not.toBe(first);
+  });
+
   it("parses valid structured puzzle JSON", () => {
     const result = parsePuzzleImportResponse(JSON.stringify({
       title: "雨夜站台",
@@ -35,10 +45,11 @@ describe("parsePuzzleImportResponse", () => {
       title: "雨夜站台",
       surface: "女孩向空气道谢后消失。",
       truth: "她在参加告别仪式。",
-      status: "reviewing",
+      status: "published",
       solutionPoints: ["50|point-1|告别仪式", "50|point-2|录音"],
       qualityScore: 86
     });
+    expect(result.publishedAt).toBeTruthy();
   });
 
   it("normalizes imported solution points into weighted non-duplicative facts", () => {
@@ -142,7 +153,8 @@ describe("importPuzzleFromText", () => {
 
     const result = await importPuzzleFromText("原始题目");
 
-    expect(result.puzzle.status).toBe("reviewing");
+    expect(result.puzzle.status).toBe("published");
+    expect(result.puzzle.publishedAt).toBeTruthy();
     expect(result.puzzle.title).toBe("冷掉的水");
     expect(result.puzzle.solutionPoints).toEqual([
       "50|water-state|杯中液体状态异常|水变冷,原本是热水",

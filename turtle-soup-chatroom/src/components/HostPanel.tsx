@@ -6,13 +6,11 @@ import { SegmentedControl } from "./ui";
 export function HostPanel({
   room,
   onAsk,
-  onPin,
-  isHostPending = false
+  onPin
 }: {
   room: RoomState;
   onAsk: (question: string, mode: "question" | "guess") => void;
   onPin: (answerId: string) => void;
-  isHostPending?: boolean;
 }) {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"question" | "guess">("question");
@@ -22,7 +20,7 @@ export function HostPanel({
   const remainingQuestions = hasUnlimitedQuestions ? 0 : Math.max(room.questionLimit - room.questionsUsed, 0);
   const isSolved = room.answerUnlocked;
   const isQuestionLimitReached = !hasUnlimitedQuestions && remainingQuestions === 0;
-  const isThinking = isHostPending || Boolean(room.hostPending);
+  const isThinking = Boolean(room.hostPending);
   const isDisabled = isThinking || isSolved || (mode === "question" && isQuestionLimitReached);
 
   useEffect(() => {

@@ -114,6 +114,66 @@ describe("room UI settlement", () => {
     expect(markup).toContain("settlement-awards");
   });
 
+  it("selects the most off-track zero-progress guess instead of the first zero-score question", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      hostLog: [
+        {
+          id: "zero-first",
+          playerId: "player-host",
+          playerName: "房主",
+          question: "门是红色的吗？",
+          answerType: "no" as const,
+          answer: "不是。",
+          progress: 0,
+          progressDelta: 0,
+          contributionScore: 0,
+          isBreakthrough: false,
+          pinned: false,
+          createdAt: "2026-06-23T00:01:00.000Z"
+        },
+        {
+          id: "zero-guess",
+          playerId: "player-host",
+          playerName: "房主",
+          question: "我猜其实这是外星人操控火车导致所有人失忆。",
+          answerType: "unsolved" as const,
+          answer: "不是这个方向。",
+          progress: 0,
+          progressDelta: 0,
+          contributionScore: 0,
+          isBreakthrough: false,
+          pinned: false,
+          createdAt: "2026-06-23T00:02:00.000Z"
+        },
+        makeSolvedRoom().hostLog[0]
+      ]
+    };
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { origin: "http://localhost:5173" }, setTimeout: () => 0 }
+    });
+
+    const markup = renderToStaticMarkup(
+      <RoomPage
+        room={room}
+        playerId="player-host"
+        onBack={() => undefined}
+        onAsk={() => undefined}
+        onPin={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+
+    expect(markup).toMatch(/最绕远提问[\s\S]*<strong>我猜其实这是外星人操控火车导致所有人失忆。<\/strong>/);
+  });
+
   it("renders compact pin controls without visible pin text", () => {
     const room = makeSolvedRoom();
     const originalWindow = globalThis.window;
@@ -244,13 +304,31 @@ describe("room UI settlement", () => {
     };
 
     const markup = renderToStaticMarkup(
-      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} isHostPending />
+      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} />
     );
 
     expect(markup).toContain("小歪正在思考");
     expect(markup).toContain("门后有人吗？");
     expect(markup).toContain("answer-card-pending");
     expect(markup).toContain("disabled");
+  });
+
+  it("does not keep local host pending feedback after the server room state has an answer", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false,
+      progress: 28
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} />
+    );
+
+    expect(markup).not.toContain("小歪正在思考");
+    expect(markup).not.toContain("思考中");
+    expect(markup).toContain("发送");
   });
 
   it("renders unlimited question rooms without a remaining count", () => {
