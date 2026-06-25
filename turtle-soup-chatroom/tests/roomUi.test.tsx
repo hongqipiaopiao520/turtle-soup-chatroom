@@ -180,20 +180,72 @@ describe("room UI settlement", () => {
     expect(markup).toContain("正在发送");
   });
 
+  it("prioritizes game chat before auxiliary side sections on small screens", () => {
+    const markup = renderToStaticMarkup(
+      <SidePanel
+        room={makeSolvedRoom()}
+        playerId="player-host"
+        onOpenSettlement={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("在线用户"));
+    expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("贡献榜"));
+  });
+
   it("renders host judging feedback while the AI host is pending", () => {
     const room = {
       ...makeSolvedRoom(),
       status: "playing" as const,
       answerUnlocked: false,
       truthRevealed: false,
-      progress: 46
+      progress: 46,
+      hostPending: {
+        id: "pending-1",
+        playerId: "player-host",
+        playerName: "房主",
+        question: "门后有人吗？",
+        mode: "question" as const,
+        createdAt: "2026-06-23T00:02:00.000Z"
+      }
     };
 
     const markup = renderToStaticMarkup(
       <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} isHostPending />
     );
 
-    expect(markup).toContain("小歪正在判定");
+    expect(markup).toContain("小歪正在思考");
+    expect(markup).toContain("门后有人吗？");
+    expect(markup).toContain("answer-card-pending");
+    expect(markup).toContain("disabled");
+  });
+
+  it("renders unlimited question rooms without a remaining count", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false,
+      questionLimit: 0,
+      questionsUsed: 42
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} />
+    );
+
+    expect(markup).toContain("不限问");
+    expect(markup).not.toContain("剩余 0 问");
+  });
+
+  it("marks scored host answers with a subtle visual class", () => {
+    const markup = renderToStaticMarkup(
+      <HostPanel room={makeSolvedRoom()} onAsk={() => undefined} onPin={() => undefined} />
+    );
+
+    expect(markup).toContain("answer-scored");
+    expect(markup).toContain("answer-score-chip");
   });
 
   it("uses a segmented control instead of a native select for host mode", () => {
@@ -227,7 +279,8 @@ describe("room UI settlement", () => {
     );
 
     expect(markup).toContain("host-badge");
-    expect(markup).toContain("小歪主持");
+    expect(markup).toContain("房主");
+    expect(markup).not.toContain("小歪主持");
     expect(markup).not.toContain("发起人");
   });
 });

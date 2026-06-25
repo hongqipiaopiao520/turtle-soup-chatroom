@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   fetchAdminPuzzles,
   importAdminPuzzleText,
+  publishAdminPuzzleBatch,
   publishAdminPuzzle,
   rejectAdminPuzzle,
   updateAdminPuzzle
@@ -79,6 +80,29 @@ describe("admin puzzle client", () => {
       headers: { Authorization: "Bearer secret" }
     });
     expect(fetcher).toHaveBeenNthCalledWith(2, "/api/admin/puzzles/puzzle-2/reject", {
+      method: "POST",
+      headers: { Authorization: "Bearer secret" }
+    });
+  });
+
+  it("publishes several managed puzzles and reports row-level failures", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: "puzzle-1", status: "published" }))
+      .mockResolvedValueOnce(jsonResponse({ message: "已经被删除" }, { ok: false, status: 404 }));
+
+    const result = await publishAdminPuzzleBatch(["puzzle-1", "puzzle-2"], {
+      token: "secret",
+      fetcher: fetcher as unknown as typeof fetch
+    });
+
+    expect(result.published).toEqual([expect.objectContaining({ id: "puzzle-1" })]);
+    expect(result.failed).toEqual([{ id: "puzzle-2", message: "已经被删除" }]);
+    expect(fetcher).toHaveBeenNthCalledWith(1, "/api/admin/puzzles/puzzle-1/publish", {
+      method: "POST",
+      headers: { Authorization: "Bearer secret" }
+    });
+    expect(fetcher).toHaveBeenNthCalledWith(2, "/api/admin/puzzles/puzzle-2/publish", {
       method: "POST",
       headers: { Authorization: "Bearer secret" }
     });

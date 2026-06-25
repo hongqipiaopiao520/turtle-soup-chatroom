@@ -47,9 +47,9 @@ export function useRoomSocket() {
     playerId,
     error,
     isChatPending,
-    isHostPending,
-    createRoom(puzzle: Pick<PublicPuzzle, "id">, playerName: string) {
-      socket.emit("room:create", { puzzleId: puzzle.id, playerName });
+    isHostPending: isHostPending || Boolean(room?.hostPending),
+    createRoom(puzzle: Pick<PublicPuzzle, "id">, playerName: string, options?: { questionLimit?: number }) {
+      socket.emit("room:create", { puzzleId: puzzle.id, playerName, questionLimit: options?.questionLimit });
     },
     joinRoom(roomId: string, playerName: string) {
       socket.emit("room:join", { roomId, playerName });
@@ -71,6 +71,15 @@ export function useRoomSocket() {
     },
     pinAnswer(answerId: string) {
       if (room) socket.emit("case:pin", { roomId: room.id, answerId });
+    },
+    leaveRoom() {
+      if (room && playerId) {
+        socket.emit("room:leave", { roomId: room.id, playerId });
+      }
+      setRoom(null);
+      setPlayerId(null);
+      setIsChatPending(false);
+      setIsHostPending(false);
     }
   };
 }

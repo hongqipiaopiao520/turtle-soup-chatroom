@@ -6,6 +6,7 @@ import {
   removeRoomSession,
   storeRoomSession
 } from "./client/roomSessionMemory";
+import { clearRoomRoute, setRoomRoute } from "./client/roomNavigation";
 import { useRoomSocket } from "./client/useRoomSocket";
 import { AdminPage } from "./components/AdminPage";
 import { HomePage } from "./components/HomePage";
@@ -20,7 +21,7 @@ type View =
   | { name: "room" };
 
 type NameRequest =
-  | { kind: "create"; puzzle: PublicPuzzle }
+  | { kind: "create"; puzzle: PublicPuzzle; unlimitedQuestions: boolean }
   | { kind: "join"; roomId: string };
 
 export function App() {
@@ -81,7 +82,7 @@ function PlayerApp() {
       setRecentRoom(mostRecentRoomSession());
     }
     if (roomSocket.room && roomSocket.playerId && pendingPuzzle) {
-      window.history.replaceState(null, "", `?room=${roomSocket.room.id}`);
+      setRoomRoute(roomSocket.room.id);
       setPendingPuzzle(null);
       setView({ name: "room" });
     }
@@ -97,6 +98,7 @@ function PlayerApp() {
         setNameRequest({ kind: "join", roomId });
       }
       if (roomSocket.error.includes("房间不存在")) {
+        clearRoomRoute();
         setView({ name: "home" });
       }
     }
@@ -111,16 +113,18 @@ function PlayerApp() {
   );
 
   function startRoom(puzzle: PublicPuzzle) {
-    setNameRequest({ kind: "create", puzzle });
+    setNameRequest({ kind: "create", puzzle, unlimitedQuestions: false });
   }
 
-  function submitName(playerName: string) {
+  function submitName(playerName: string, options: { unlimitedQuestions?: boolean } = {}) {
     const trimmedName = playerName.trim() || "访客";
     if (!nameRequest) return;
 
     if (nameRequest.kind === "create") {
       setPendingPuzzle(nameRequest.puzzle);
-      roomSocket.createRoom(nameRequest.puzzle, trimmedName);
+      roomSocket.createRoom(nameRequest.puzzle, trimmedName, {
+        questionLimit: options.unlimitedQuestions ? 0 : undefined
+      });
     } else {
       roomSocket.joinRoom(nameRequest.roomId, trimmedName);
       setView({ name: "room" });
@@ -146,7 +150,13 @@ function PlayerApp() {
       <RoomPage
         room={roomSocket.room}
         playerId={roomSocket.playerId}
-        onBack={() => setView({ name: "home" })}
+        onBack={() => {
+          removeRoomSession(roomSocket.room?.id ?? "");
+          setRecentRoom(mostRecentRoomSession());
+          clearRoomRoute();
+          roomSocket.leaveRoom();
+          setView({ name: "home" });
+        }}
         onAsk={roomSocket.askHost}
         onPin={roomSocket.pinAnswer}
         onSendChat={roomSocket.sendChat}
@@ -167,7 +177,7 @@ function PlayerApp() {
         onRandomPuzzle={randomPuzzle}
         onResumeRoom={(session) => {
           roomSocket.rejoinRoom(session.roomId, session.playerId);
-          window.history.replaceState(null, "", `?room=${session.roomId}`);
+          setRoomRoute(session.roomId);
           setView({ name: "room" });
         }}
       />
@@ -182,9 +192,12 @@ function NameDialog({
 }: {
   request: NameRequest;
   onCancel: () => void;
-  onSubmit: (playerName: string) => void;
+  onSubmit: (playerName: string, options?: { unlimitedQuestions?: boolean }) => void;
 }) {
   const [name, setName] = useState("");
+  const [unlimitedQuestions, setUnlimitedQuestions] = useState(
+    request.kind === "create" ? request.unlimitedQuestions : false
+  );
   const actionLabel = request.kind === "create" ? "创建房间" : "加入房间";
 
   return (
@@ -193,7 +206,7 @@ function NameDialog({
         className="name-dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit(name);
+          onSubmit(name, { unlimitedQuestions });
         }}
       >
         <h2>输入昵称</h2>
@@ -201,6 +214,16 @@ function NameDialog({
           昵称
           <input autoFocus value={name} onChange={(event) => setName(event.target.value)} maxLength={18} placeholder="访客" />
         </label>
+        {request.kind === "create" && (
+          <label className="name-dialog-check">
+            <input
+              type="checkbox"
+              checked={unlimitedQuestions}
+              onChange={(event) => setUnlimitedQuestions(event.target.checked)}
+            />
+            普通提问不限次数
+          </label>
+        )}
         <div className="dialog-actions">
           <button className="ghost-button" type="button" onClick={onCancel}>
             取消

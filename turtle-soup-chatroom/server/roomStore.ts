@@ -2,6 +2,7 @@ import type {
   CaseNote,
   ChatMessage,
   HostAnswer,
+  HostPending,
   Player,
   Puzzle,
   RoomSettlement,
@@ -68,12 +69,22 @@ function normalizeHostAnswer(answer: HostAnswer): HostAnswer {
   };
 }
 
+function normalizeHostPending(pending?: HostPending): HostPending | undefined {
+  return pending
+    ? {
+        ...pending,
+        mode: pending.mode === "guess" ? "guess" : "question"
+      }
+    : undefined;
+}
+
 function normalizeRoom(room: RoomState): RoomState {
   return {
     ...room,
     puzzle: normalizePuzzle(room.puzzle),
     players: room.players.map(normalizePlayer),
     hostLog: room.hostLog.map(normalizeHostAnswer),
+    hostPending: normalizeHostPending(room.hostPending),
     progress: room.progress ?? 0,
     answerUnlocked: room.answerUnlocked ?? room.status === "solved",
     truthRevealed: room.truthRevealed ?? false
@@ -115,8 +126,11 @@ export function listRooms() {
   return Array.from(rooms.values());
 }
 
-export function exportRoomsSnapshot() {
-  return listRooms();
+export function exportRoomsSnapshot(): RoomState[] {
+  return listRooms().map((room) => ({
+    ...room,
+    hostPending: undefined
+  }));
 }
 
 export function importRoomsSnapshot(nextRooms: RoomState[]) {
@@ -132,7 +146,11 @@ export function getRoom(roomId: string) {
   return room ? normalizeRoom(room) : undefined;
 }
 
-export function createRoom(puzzle: Puzzle, hostName: string): RoomSession {
+export function createRoom(
+  puzzle: Puzzle,
+  hostName: string,
+  options: { questionLimit?: number } = {}
+): RoomSession {
   const host: Player = {
     id: id("player"),
     name: hostName.trim() || "访客",
@@ -151,7 +169,7 @@ export function createRoom(puzzle: Puzzle, hostName: string): RoomSession {
     hostLog: [],
     chatMessages: [],
     caseNotes: [],
-    questionLimit: 20,
+    questionLimit: options.questionLimit === 0 ? 0 : 20,
     questionsUsed: 0,
     progress: 0,
     answerUnlocked: false,
@@ -221,7 +239,12 @@ export function addHostAnswer(
   if (room.status === "solved") {
     throw new Error("本局已结束");
   }
-  if (room.questionsUsed >= room.questionLimit && answer.answerType !== "solved" && answer.answerType !== "unsolved") {
+  if (
+    room.questionLimit > 0 &&
+    room.questionsUsed >= room.questionLimit &&
+    answer.answerType !== "solved" &&
+    answer.answerType !== "unsolved"
+  ) {
     throw new Error("提问次数已用完");
   }
 
@@ -263,6 +286,42 @@ export function addHostAnswer(
     room.settlement = calculateSettlement(room, crossedUnlock ? answer.playerId : undefined);
   }
   return item;
+}
+
+export function setHostPending(
+  roomId: string,
+  playerId: string,
+  question: string,
+  mode: "question" | "guess"
+): RoomState {
+  const room = requireRoom(roomId);
+  const player = requirePlayer(room, playerId);
+  const trimmedQuestion = question.trim();
+  if (!trimmedQuestion) {
+    throw new Error("问题不能为空");
+  }
+  if (room.hostPending) {
+    throw new Error("小歪正在思考中");
+  }
+  if (room.status === "solved") {
+    throw new Error("本局已结束");
+  }
+
+  room.hostPending = {
+    id: id("pending"),
+    playerId,
+    playerName: player.name,
+    question: trimmedQuestion.slice(0, 256),
+    mode,
+    createdAt: now()
+  };
+  return room;
+}
+
+export function clearHostPending(roomId: string): RoomState {
+  const room = requireRoom(roomId);
+  delete room.hostPending;
+  return room;
 }
 
 export function pinAnswer(roomId: string, answerId: string): RoomState {

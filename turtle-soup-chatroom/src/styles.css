@@ -20,6 +20,13 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -331,7 +338,11 @@ select:focus-visible {
 }
 
 .puzzle-card {
-  min-height: 210px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 258px;
+  min-height: 258px;
+  overflow: hidden;
   padding: 16px;
   color: var(--text);
   cursor: pointer;
@@ -349,14 +360,33 @@ select:focus-visible {
 }
 
 .card-head h3 {
+  min-width: 0;
+  overflow: hidden;
   margin: 0;
   font-size: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .puzzle-card p,
 .activity-panel p {
   color: var(--muted);
   line-height: 1.65;
+}
+
+.puzzle-card p {
+  display: -webkit-box;
+  min-height: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.card-bottom {
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  min-height: 58px;
 }
 
 .tag-row {
@@ -366,12 +396,29 @@ select:focus-visible {
   margin: 12px 0;
 }
 
+.puzzle-card .tag-row {
+  flex-wrap: nowrap;
+  min-height: 26px;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+}
+
+.puzzle-card .tag-row::-webkit-scrollbar {
+  display: none;
+}
+
 .tag-row span,
 .difficulty {
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
   border: 1px solid var(--border);
-  padding: 4px 8px;
+  min-height: 24px;
+  padding: 2px 8px;
   font-size: 12px;
+  line-height: 1;
   color: #d6e4da;
   background: rgba(95, 140, 134, 0.13);
 }
@@ -394,6 +441,7 @@ select:focus-visible {
 .card-foot {
   justify-content: space-between;
   gap: 8px;
+  margin-top: 0;
   color: var(--muted);
   font-size: 13px;
 }
@@ -641,6 +689,21 @@ select:focus-visible {
   font-size: 13px;
 }
 
+.admin-bulk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-top: 12px;
+  padding-bottom: 12px;
+}
+
+.admin-bulk-actions span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .admin-puzzle-list {
   display: grid;
   gap: 8px;
@@ -651,15 +714,52 @@ select:focus-visible {
 
 .admin-puzzle-row {
   display: grid;
-  gap: 6px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(29, 37, 35, 0.74);
   color: var(--text);
-  cursor: pointer;
   padding: 11px;
   text-align: left;
+}
+
+.admin-puzzle-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.admin-puzzle-main strong,
+.admin-puzzle-main small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-row-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
+.admin-row-check input,
+.name-dialog-check input {
+  accent-color: #d8a84f;
 }
 
 .admin-puzzle-row-active {
@@ -818,7 +918,7 @@ select:focus-visible {
   font-size: 13px;
 }
 
-.name-dialog input {
+.name-dialog input:not([type="checkbox"]) {
   min-height: 44px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -826,6 +926,22 @@ select:focus-visible {
   color: var(--text);
   padding: 0 12px;
   outline: 0;
+}
+
+.name-dialog .name-dialog-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #d6e4da;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+.name-dialog .name-dialog-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: 0 0 auto;
 }
 
 .dialog-actions {
@@ -865,6 +981,7 @@ select:focus-visible {
   display: grid;
   grid-template-columns: minmax(240px, 28%) minmax(420px, 1fr) minmax(280px, 320px);
   gap: 12px;
+  min-width: 0;
   padding: 12px;
   min-height: 0;
   overflow: hidden;
@@ -1020,6 +1137,22 @@ select:focus-visible {
   padding: 12px 12px 10px;
 }
 
+.answer-scored {
+  border-color: rgba(216, 168, 79, 0.46);
+  box-shadow: inset 3px 0 0 rgba(216, 168, 79, 0.42);
+}
+
+.answer-card-pending {
+  border-color: rgba(95, 140, 134, 0.48);
+  background:
+    linear-gradient(90deg, rgba(95, 140, 134, 0.12), transparent 42%),
+    var(--panel-2);
+}
+
+.answer-card-pending .answer-line p {
+  color: #d8f0c4;
+}
+
 .question-line,
 .answer-line {
   display: grid;
@@ -1084,6 +1217,13 @@ select:focus-visible {
   color: #d6e4da;
   padding: 3px 7px;
   font-size: 12px;
+}
+
+.answer-meta .answer-score-chip {
+  border-color: rgba(216, 168, 79, 0.42);
+  background: rgba(216, 168, 79, 0.12);
+  color: #f4dca0;
+  font-weight: 800;
 }
 
 .answer-yes {
@@ -1163,7 +1303,7 @@ select:focus-visible {
 
 .side-panel {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) minmax(120px, auto);
+  grid-template-rows: minmax(0, 1fr) auto auto minmax(120px, auto);
   gap: 12px;
   min-height: 0;
   overflow: hidden;
@@ -1431,15 +1571,32 @@ select:focus-visible {
     overflow: visible;
   }
 
+  .puzzle-panel {
+    order: 1;
+    max-height: 210px;
+  }
+
   .side-panel {
+    order: 2;
+    grid-template-rows: minmax(220px, auto) auto auto auto;
     overflow: visible;
   }
 
   .chat-section {
-    min-height: 360px;
+    min-height: clamp(220px, 38vh, 360px);
+  }
+
+  .player-list {
+    max-height: 92px;
+    overflow: auto;
+  }
+
+  .score-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .host-panel {
+    order: 3;
     min-height: 560px;
   }
 

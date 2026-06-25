@@ -3,6 +3,7 @@ import { seedPuzzles } from "../src/data/seedPuzzles";
 import {
   addChatMessage,
   addHostAnswer,
+  clearHostPending,
   createRoom,
   exportRoomsSnapshot,
   getRoom,
@@ -10,7 +11,8 @@ import {
   joinRoom,
   pinAnswer,
   rejoinRoom,
-  resetRooms
+  resetRooms,
+  setHostPending
 } from "../server/roomStore";
 
 describe("roomStore", () => {
@@ -23,6 +25,30 @@ describe("roomStore", () => {
     expect(room.players[0]).toMatchObject({ name: "阿汤", isHost: true });
     expect(playerId).toBe(room.players[0].id);
     expect(room.questionLimit).toBe(20);
+  });
+
+  it("creates a room with unlimited ordinary questions", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主", { questionLimit: 0 });
+
+    addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "第一问",
+      answerType: "yes",
+      answer: "是。",
+      progress: 1
+    });
+    addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "第二问",
+      answerType: "no",
+      answer: "不是。",
+      progress: 2
+    });
+
+    expect(getRoom(room.id)?.questionLimit).toBe(0);
+    expect(getRoom(room.id)?.questionsUsed).toBe(2);
   });
 
   it("allows up to 10 players and rejects the eleventh", () => {
@@ -87,6 +113,25 @@ describe("roomStore", () => {
     });
 
     expect(getRoom(room.id)?.questionsUsed).toBe(1);
+  });
+
+  it("tracks transient host pending state without persisting it", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主");
+
+    const pendingRoom = setHostPending(room.id, playerId, "门后有人吗？", "question");
+
+    expect(pendingRoom.hostPending).toMatchObject({
+      playerId,
+      playerName: "房主",
+      question: "门后有人吗？",
+      mode: "question"
+    });
+    expect(() => setHostPending(room.id, playerId, "还能追问吗？", "question")).toThrow("小歪正在思考中");
+    expect(exportRoomsSnapshot()[0].hostPending).toBeUndefined();
+
+    const clearedRoom = clearHostPending(room.id);
+
+    expect(clearedRoom.hostPending).toBeUndefined();
   });
 
   it("unlocks the answer at 95 percent and prevents more host answers", () => {

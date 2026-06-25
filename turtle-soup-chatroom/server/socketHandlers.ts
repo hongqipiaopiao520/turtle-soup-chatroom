@@ -4,13 +4,15 @@ import { askHost } from "./aiHost";
 import {
   addChatMessage,
   addHostAnswer,
+  clearHostPending,
   createRoom,
   exportRoomsSnapshot,
   getRoom,
   joinRoom,
   pinAnswer,
   rejoinRoom,
-  removePlayer
+  removePlayer,
+  setHostPending
 } from "./roomStore";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
 import type { RoomRepository } from "./storage/roomRepository";
@@ -40,10 +42,12 @@ export function getPublishedPuzzleForRoom(puzzleRepository: PuzzleRepository, pu
 
 export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDependencies) {
   io.on("connection", (socket) => {
-    socket.on("room:create", ({ puzzleId, playerName }) => {
+    socket.on("room:create", ({ puzzleId, playerName, questionLimit }) => {
       try {
         const puzzle = getPublishedPuzzleForRoom(dependencies.puzzleRepository, puzzleId);
-        const session = createRoom(puzzle, playerName);
+        const session = createRoom(puzzle, playerName, {
+          questionLimit: questionLimit === 0 ? 0 : undefined
+        });
         const { room } = session;
         socket.join(room.id);
         persistRooms(dependencies.roomRepository);
@@ -90,33 +94,35 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
     });
 
     socket.on("host:ask", async ({ roomId, playerId, question, mode }) => {
+      let pendingId: string | undefined;
       try {
-        const room = getRoom(roomId);
-        if (!room) throw new Error("房间不存在");
-        const player = room.players.find((item) => item.id === playerId);
-        if (!player) throw new Error("玩家不在房间内");
+        const pendingRoom = setHostPending(roomId, playerId, question, mode === "guess" ? "guess" : "question");
+        pendingId = pendingRoom.hostPending?.id;
+        persistRooms(dependencies.roomRepository);
+        io.to(pendingRoom.id).emit("room:state", pendingRoom);
 
         const decision = await askHost({
-          puzzle: room.puzzle,
-          history: room.hostLog.map((item) => ({
+          puzzle: pendingRoom.puzzle,
+          history: pendingRoom.hostLog.map((item) => ({
             question: item.question,
             answer: item.answer
           })),
-          question,
-          mode,
-          currentProgress: room.progress
+          question: pendingRoom.hostPending?.question ?? question,
+          mode: pendingRoom.hostPending?.mode ?? "question",
+          currentProgress: pendingRoom.progress
         });
 
         addHostAnswer(roomId, {
           playerId,
-          playerName: player.name,
-          question,
+          playerName: pendingRoom.hostPending?.playerName ?? "",
+          question: pendingRoom.hostPending?.question ?? question,
           answerType: decision.answerType,
           answer: decision.answer,
           progress: decision.progress,
           coveredPointIds: decision.coveredPointIds,
           coverageConfidence: decision.coverageConfidence
         });
+        clearHostPending(roomId);
 
         const updated = getRoom(roomId);
         if (updated) {
@@ -124,6 +130,12 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
           io.to(updated.id).emit("room:state", updated);
         }
       } catch (error) {
+        const room = getRoom(roomId);
+        if (room?.hostPending && room.hostPending.id === pendingId) {
+          const updated = clearHostPending(roomId);
+          persistRooms(dependencies.roomRepository);
+          io.to(updated.id).emit("room:state", updated);
+        }
         emitError(socket, error);
       }
     });
@@ -140,6 +152,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
 
     socket.on("room:leave", ({ roomId, playerId }) => {
       try {
+        socket.leave(roomId);
         const room = removePlayer(roomId, playerId);
         if (room.players.length === 0) {
           dependencies.roomRepository.remove(roomId);

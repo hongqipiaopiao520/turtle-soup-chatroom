@@ -23,15 +23,17 @@ export function PuzzleCard({
         </span>
       </div>
       <p>{puzzle.surface}</p>
-      <div className="tag-row">
-        {puzzle.tags.slice(0, 3).map((tag) => (
-          <span key={tag}>#{tag}</span>
-        ))}
-      </div>
-      <div className="card-foot">
-        <span>{puzzle.author}</span>
-        <span><Star size={14} /> {puzzle.rating.toFixed(1)}</span>
-        <span><Users size={14} /> {puzzle.plays}</span>
+      <div className="card-bottom">
+        <div className="tag-row">
+          {puzzle.tags.slice(0, 3).map((tag) => (
+            <span key={tag}>#{tag}</span>
+          ))}
+        </div>
+        <div className="card-foot">
+          <span>{puzzle.author}</span>
+          <span><Star size={14} /> {puzzle.rating.toFixed(1)}</span>
+          <span><Users size={14} /> {puzzle.plays}</span>
+        </div>
       </div>
     </button>
   );

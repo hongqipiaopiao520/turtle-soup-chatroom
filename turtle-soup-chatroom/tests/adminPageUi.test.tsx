@@ -55,6 +55,16 @@ describe("AdminPage", () => {
     expect(markup).toContain("支持 .txt/.md/.csv");
   });
 
+  it("renders bulk review controls for publishing selected puzzles", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
+    );
+
+    expect(markup).toContain("批量发布");
+    expect(markup).toContain('type="checkbox"');
+    expect(markup).toContain("选择题目");
+  });
+
   it("uses unified select controls in admin filters and editor fields", () => {
     const markup = renderToStaticMarkup(
       <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />

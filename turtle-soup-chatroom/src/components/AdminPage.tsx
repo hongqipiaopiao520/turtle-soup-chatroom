@@ -5,6 +5,7 @@ import {
   fetchAdminPuzzles,
   importAdminPuzzleBatch,
   importAdminPuzzleText,
+  publishAdminPuzzleBatch,
   publishAdminPuzzle,
   rejectAdminPuzzle,
   updateAdminPuzzle
@@ -64,6 +65,7 @@ export function AdminPage({
   const [fileImportName, setFileImportName] = useState("");
   const [message, setMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const selectedPuzzle = useMemo(
     () => puzzles.find((puzzle) => puzzle.id === selectedId) ?? puzzles[0],
@@ -92,6 +94,7 @@ export function AdminPage({
         token: token.trim() || undefined
       });
       setPuzzles(nextPuzzles);
+      setSelectedIds([]);
       setSelectedId(nextPuzzles[0]?.id ?? "");
       if (nextPuzzles.length === 0) {
         setDraft(puzzleToDraft(undefined));
@@ -203,6 +206,29 @@ export function AdminPage({
     }
   }
 
+  async function publishSelectedBatch() {
+    const ids = selectedIds.filter((id) => puzzles.some((puzzle) => puzzle.id === id));
+    if (ids.length === 0) {
+      setMessage("请先选择题目");
+      return;
+    }
+    setIsBusy(true);
+    setMessage("正在批量发布...");
+    try {
+      const result = await publishAdminPuzzleBatch(ids, { token: token.trim() || undefined });
+      setPuzzles((current) => current.map((puzzle) => result.published.find((item) => item.id === puzzle.id) ?? puzzle));
+      setSelectedIds((current) => current.filter((id) => result.failed.some((failure) => failure.id === id)));
+      const failureText = result.failed.length
+        ? `，失败 ${result.failed.length} 条：${result.failed.map((failure) => failure.message).join("；")}`
+        : "";
+      setMessage(`已发布 ${result.published.length} 条${failureText}`);
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   async function rejectSelected() {
     if (!selectedPuzzle) return;
     setIsBusy(true);
@@ -222,6 +248,13 @@ export function AdminPage({
     setPuzzles((current) => current.map((puzzle) => (puzzle.id === updated.id ? updated : puzzle)));
     setSelectedId(updated.id);
     setDraft(puzzleToDraft(updated));
+  }
+
+  function toggleSelected(id: string, checked: boolean) {
+    setSelectedIds((current) => {
+      if (checked) return current.includes(id) ? current : [...current, id];
+      return current.filter((item) => item !== id);
+    });
   }
 
   return (
@@ -304,25 +337,43 @@ export function AdminPage({
             <h2>审核队列</h2>
             <span>{puzzles.length} 条</span>
           </div>
+          <div className="admin-bulk-actions">
+            <span>已选择 {selectedIds.length} 条</span>
+            <button className="primary-button" type="button" onClick={publishSelectedBatch} disabled={isBusy || selectedIds.length === 0}>
+              <Check size={16} /> 批量发布
+            </button>
+          </div>
           <label className="admin-search">
             <Search size={16} />
             <span>按左侧状态筛选，选择题目后在右侧编辑。</span>
           </label>
           <div className="admin-puzzle-list">
             {puzzles.map((puzzle) => (
-              <button
+              <div
                 className={`admin-puzzle-row ${puzzle.id === selectedPuzzle?.id ? "admin-puzzle-row-active" : ""}`}
                 key={puzzle.id}
-                type="button"
-                onClick={() => {
-                  setSelectedId(puzzle.id);
-                  setDraft(puzzleToDraft(puzzle));
-                }}
               >
-                <span className={`admin-status admin-status-${puzzle.status}`}>{statusLabel(puzzle.status)}</span>
-                <strong>{puzzle.title}</strong>
-                <small>{difficultyLabel(puzzle.difficulty)} · {puzzle.qualityScore} 分 · {puzzle.sourceTitle || "无来源"}</small>
-              </button>
+                <label className="admin-row-check" onClick={(event) => event.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(puzzle.id)}
+                    onChange={(event) => toggleSelected(puzzle.id, event.target.checked)}
+                  />
+                  选择题目
+                </label>
+                <button
+                  className="admin-puzzle-main"
+                  type="button"
+                  onClick={() => {
+                    setSelectedId(puzzle.id);
+                    setDraft(puzzleToDraft(puzzle));
+                  }}
+                >
+                  <span className={`admin-status admin-status-${puzzle.status}`}>{statusLabel(puzzle.status)}</span>
+                  <strong>{puzzle.title}</strong>
+                  <small>{difficultyLabel(puzzle.difficulty)} · {puzzle.qualityScore} 分 · {puzzle.sourceTitle || "无来源"}</small>
+                </button>
+              </div>
             ))}
             {puzzles.length === 0 && <p className="admin-empty">暂无题目，先导入一条原文。</p>}
           </div>

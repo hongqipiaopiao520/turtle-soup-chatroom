@@ -18,6 +18,11 @@ export interface AdminBatchImportResult {
   failed: Array<{ index: number; message: string }>;
 }
 
+export interface AdminBatchPublishResult {
+  published: ManagedPuzzle[];
+  failed: Array<{ id: string; message: string }>;
+}
+
 export interface AdminPuzzleUpdateInput {
   title: string;
   surface: string;
@@ -118,6 +123,21 @@ export function publishAdminPuzzle(id: string, options: AdminClientOptions = {})
     },
     options
   );
+}
+
+export async function publishAdminPuzzleBatch(ids: string[], options: AdminClientOptions = {}): Promise<AdminBatchPublishResult> {
+  const published: ManagedPuzzle[] = [];
+  const failed: Array<{ id: string; message: string }> = [];
+
+  for (const id of ids) {
+    try {
+      published.push(await publishAdminPuzzle(id, options));
+    } catch (error) {
+      failed.push({ id, message: error instanceof Error ? error.message : "发布失败" });
+    }
+  }
+
+  return { published, failed };
 }
 
 export function rejectAdminPuzzle(id: string, options: AdminClientOptions = {}) {

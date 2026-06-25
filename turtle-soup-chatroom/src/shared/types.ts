@@ -86,6 +86,15 @@ export interface HostAnswer {
   createdAt: string;
 }
 
+export interface HostPending {
+  id: string;
+  playerId: string;
+  playerName: string;
+  question: string;
+  mode: "question" | "guess";
+  createdAt: string;
+}
+
 export interface ChatMessage {
   id: string;
   playerId: string;
@@ -107,6 +116,7 @@ export interface RoomState {
   status: RoomStatus;
   players: Player[];
   hostLog: HostAnswer[];
+  hostPending?: HostPending;
   chatMessages: ChatMessage[];
   caseNotes: CaseNote[];
   questionLimit: number;
