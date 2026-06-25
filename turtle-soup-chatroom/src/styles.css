@@ -1254,10 +1254,14 @@ select:focus-visible {
 
 .ask-box {
   display: grid;
-  grid-template-columns: minmax(150px, 190px) 1fr 92px;
+  grid-template-columns: minmax(150px, 190px) 1fr 108px;
   gap: 8px;
   border-top: 1px solid var(--border);
   padding-top: 12px;
+}
+
+.ask-box .primary-button {
+  white-space: nowrap;
 }
 
 .ask-box textarea,
@@ -1477,20 +1481,24 @@ select:focus-visible {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at 50% 32%, rgba(216, 168, 79, 0.18), transparent 26%),
+    radial-gradient(circle at 50% 18%, rgba(244, 220, 160, 0.18), transparent 25%),
+    radial-gradient(circle at 18% 78%, rgba(95, 140, 134, 0.18), transparent 30%),
     rgba(3, 5, 5, 0.78);
   padding: 18px;
 }
 
 .settlement-dialog {
   position: relative;
-  width: min(100%, 560px);
+  width: min(100%, 760px);
+  max-height: min(92vh, 820px);
+  overflow: auto;
   border: 1px solid rgba(216, 168, 79, 0.38);
   border-radius: 8px;
   background:
+    linear-gradient(135deg, rgba(216, 168, 79, 0.12), transparent 34%),
     linear-gradient(180deg, rgba(36, 34, 27, 0.98), rgba(14, 19, 18, 0.98));
   box-shadow: 0 32px 120px rgba(0, 0, 0, 0.62);
-  padding: 22px;
+  padding: 24px;
 }
 
 .dialog-close {
@@ -1509,7 +1517,9 @@ select:focus-visible {
 }
 
 .settlement-hero {
-  display: grid;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 8px;
   padding-right: 38px;
 }
@@ -1519,10 +1529,39 @@ select:focus-visible {
   font-size: 28px;
 }
 
-.settlement-hero strong {
+.settlement-score {
+  display: inline-grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 98px;
+  border: 1px solid rgba(216, 168, 79, 0.42);
+  border-radius: 8px;
+  background: rgba(216, 168, 79, 0.12);
+  color: #f4dca0;
+  padding: 10px;
+}
+
+.settlement-score strong {
   color: #f4dca0;
   font-size: 36px;
   line-height: 1;
+}
+
+.settlement-score span {
+  color: #d6e4da;
+  font-size: 12px;
+}
+
+.settlement-truth-block {
+  margin-top: 18px;
+}
+
+.settlement-truth-block > span,
+.settlement-key-replies > span {
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .truth-text {
@@ -1531,8 +1570,52 @@ select:focus-visible {
   background: rgba(5, 7, 7, 0.34);
   color: #f3ecd8;
   line-height: 1.8;
-  margin: 18px 0 0;
+  margin: 8px 0 0;
   padding: 14px;
+}
+
+.settlement-awards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.settlement-awards article,
+.settlement-key-replies {
+  border: 1px solid rgba(221, 205, 158, 0.18);
+  border-radius: 8px;
+  background: rgba(5, 7, 7, 0.28);
+  padding: 12px;
+}
+
+.settlement-awards article span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settlement-awards article strong {
+  display: block;
+  margin-top: 7px;
+  color: #f3ecd8;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.settlement-key-replies {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.settlement-key-replies p {
+  margin: 0;
+  color: #d6e4da;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .settlement-confirm {
@@ -1578,16 +1661,35 @@ select:focus-visible {
 
   .side-panel {
     order: 2;
-    grid-template-rows: minmax(220px, auto) auto auto auto;
+    grid-template-rows: minmax(320px, auto) auto auto auto;
     overflow: visible;
   }
 
   .chat-section {
-    min-height: clamp(220px, 38vh, 360px);
+    min-height: clamp(320px, 50vh, 520px);
+  }
+
+  .side-panel .side-section:not(.chat-section) {
+    padding: 10px;
+  }
+
+  .side-panel .side-section:not(.chat-section) h2 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .side-panel .side-section:not(.chat-section) .player-pill {
+    padding: 4px 7px;
+    font-size: 13px;
+  }
+
+  .side-panel .side-section:not(.chat-section) .score-row {
+    padding: 6px 8px;
+    font-size: 13px;
   }
 
   .player-list {
-    max-height: 92px;
+    max-height: 76px;
     overflow: auto;
   }
 
@@ -1620,5 +1722,19 @@ select:focus-visible {
 
   .icon-button {
     justify-self: start;
+  }
+
+  .settlement-dialog {
+    padding: 18px;
+  }
+
+  .settlement-hero,
+  .settlement-awards {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .settlement-hero {
+    padding-right: 36px;
   }
 }

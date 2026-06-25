@@ -22,13 +22,20 @@ describe("layout CSS", () => {
   it("prioritizes the mobile side-panel chat area", () => {
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*order:\s*2/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.host-panel\s*\{[^}]*order:\s*3/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.chat-section\s*\{[^}]*min-height:\s*clamp\(220px,\s*38vh,\s*360px\)/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*grid-template-rows:\s*minmax\(220px,\s*auto\) auto auto auto/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.chat-section\s*\{[^}]*min-height:\s*clamp\(320px,\s*50vh,\s*520px\)/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*grid-template-rows:\s*minmax\(320px,\s*auto\) auto auto auto/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel \.side-section:not\(\.chat-section\)\s*\{[^}]*padding:\s*10px/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel \.side-section:not\(\.chat-section\) h2\s*\{[^}]*font-size:\s*14px/);
   });
 
   it("keeps the room option checkbox compact inside the name dialog", () => {
     expect(css).toMatch(/\.name-dialog input:not\(\[type="checkbox"\]\)\s*\{[^}]*min-height:\s*44px/s);
     expect(css).toMatch(/\.name-dialog-check input\s*\{[^}]*width:\s*18px/s);
     expect(css).toMatch(/\.name-dialog-check input\s*\{[^}]*height:\s*18px/s);
+  });
+
+  it("keeps the host submit button text on one line while pending", () => {
+    expect(css).toMatch(/\.ask-box\s*\{[^}]*grid-template-columns:\s*minmax\(150px,\s*190px\) 1fr 108px/s);
+    expect(css).toMatch(/\.ask-box \.primary-button\s*\{[^}]*white-space:\s*nowrap/s);
   });
 });

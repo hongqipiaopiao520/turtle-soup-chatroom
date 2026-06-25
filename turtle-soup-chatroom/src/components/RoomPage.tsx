@@ -1,4 +1,4 @@
-import { ArrowLeft, Award, Link, X } from "lucide-react";
+import { ArrowLeft, Award, BadgeCheck, Compass, KeyRound, Link, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { RoomState } from "../shared/types";
 import { HostPanel } from "./HostPanel";
@@ -41,6 +41,16 @@ export function RoomPage({
   const bestAnswer = room.settlement?.bestAnswerId
     ? room.hostLog.find((item) => item.id === room.settlement?.bestAnswerId)
     : [...room.hostLog].sort((a, b) => b.progressDelta - a.progressDelta)[0];
+  const breakthroughAnswer = [...room.hostLog]
+    .filter((item) => item.progressDelta > 0)
+    .sort((a, b) => b.progressDelta - a.progressDelta)[0];
+  const keyReplies = [...room.hostLog]
+    .filter((item) => item.progressDelta > 0 || item.contributionScore > 0)
+    .sort((a, b) => b.contributionScore - a.contributionScore || b.progressDelta - a.progressDelta)
+    .slice(0, 3);
+  const leastUsefulQuestion = [...room.hostLog]
+    .filter((item) => item.progressDelta === 0 && item.answerType !== "solved")
+    .sort((a, b) => a.contributionScore - b.contributionScore)[0];
 
   useEffect(() => {
     if (room.answerUnlocked && lastUnlockedRoomRef.current !== room.id) {
@@ -107,11 +117,46 @@ export function RoomPage({
               <X size={18} />
             </button>
             <div className="settlement-hero">
-              <span className="panel-kicker">汤底揭晓</span>
+              <span className="panel-kicker">破案报告</span>
               <h2 id="settlement-title">{room.puzzle.title}</h2>
-              <strong>{room.progress}%</strong>
+              <div className="settlement-score">
+                <Sparkles size={20} />
+                <strong>{room.progress}%</strong>
+                <span>真相还原</span>
+              </div>
             </div>
-            <p className="truth-text">{room.puzzle.truth}</p>
+            <div className="settlement-truth-block">
+              <span>汤底揭晓</span>
+              <p className="truth-text">{room.puzzle.truth}</p>
+            </div>
+            <div className="settlement-awards">
+              <article>
+                <span><Award size={15} /> 本局 MVP</span>
+                <strong>{mvp?.name ?? "暂无"}</strong>
+              </article>
+              <article>
+                <span><BadgeCheck size={15} /> 最佳突破</span>
+                <strong>{breakthroughAnswer ? `${breakthroughAnswer.playerName} +${breakthroughAnswer.progressDelta}%` : "暂无"}</strong>
+              </article>
+              <article>
+                <span><KeyRound size={15} /> 关键回复</span>
+                <strong>{keyReplies[0] ? keyReplies[0].question : bestAnswer?.question ?? "暂无"}</strong>
+              </article>
+              <article>
+                <span><Compass size={15} /> 最绕远提问</span>
+                <strong>{leastUsefulQuestion ? leastUsefulQuestion.question : "本局没有明显绕远"}</strong>
+              </article>
+            </div>
+            {keyReplies.length > 0 && (
+              <div className="settlement-key-replies">
+                <span>关键回复记录</span>
+                {keyReplies.map((item) => (
+                  <p key={item.id}>
+                    <strong>{item.playerName}</strong>：{item.question}
+                  </p>
+                ))}
+              </div>
+            )}
             <div className="settlement-grid">
               <span>本局 MVP</span>
               <strong>

@@ -107,6 +107,11 @@ describe("room UI settlement", () => {
     expect(markup).toContain('role="dialog"');
     expect(markup).toContain(room.puzzle.truth);
     expect(markup).toContain("本局 MVP");
+    expect(markup).toContain("破案报告");
+    expect(markup).toContain("最佳突破");
+    expect(markup).toContain("关键回复");
+    expect(markup).toContain("最绕远提问");
+    expect(markup).toContain("settlement-awards");
   });
 
   it("renders compact pin controls without visible pin text", () => {
