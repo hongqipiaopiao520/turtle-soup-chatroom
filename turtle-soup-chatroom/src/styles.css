@@ -1001,18 +1001,46 @@ select:focus-visible {
 }
 
 .room-topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid var(--border);
   background: rgba(12, 16, 17, 0.72);
   padding: 10px 14px;
 }
 
+.room-title-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 .room-topbar h1 {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 20px;
+}
+
+.room-code-pill {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid rgba(95, 140, 134, 0.36);
+  border-radius: 999px;
+  background: rgba(95, 140, 134, 0.1);
+  color: var(--muted);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.room-topbar .primary-button,
+.room-topbar .ghost-button {
+  white-space: nowrap;
 }
 
 .room-grid {
@@ -1097,6 +1125,8 @@ select:focus-visible {
 
 .host-log::-webkit-scrollbar,
 .chat-list::-webkit-scrollbar,
+.player-list::-webkit-scrollbar,
+.score-list::-webkit-scrollbar,
 .puzzle-panel::-webkit-scrollbar,
 .side-panel::-webkit-scrollbar {
   width: 10px;
@@ -1104,6 +1134,8 @@ select:focus-visible {
 
 .host-log::-webkit-scrollbar-thumb,
 .chat-list::-webkit-scrollbar-thumb,
+.player-list::-webkit-scrollbar-thumb,
+.score-list::-webkit-scrollbar-thumb,
 .puzzle-panel::-webkit-scrollbar-thumb,
 .side-panel::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
@@ -1166,13 +1198,14 @@ select:focus-visible {
 }
 
 .answer-card {
+  position: relative;
   border: 1px solid var(--border);
   border-radius: 8px;
   background:
     linear-gradient(90deg, rgba(216, 168, 79, 0.08), transparent 34%),
     var(--panel-2);
   margin: 0;
-  padding: 12px 12px 10px;
+  padding: 12px 46px 10px 12px;
 }
 
 .answer-scored {
@@ -1194,7 +1227,7 @@ select:focus-visible {
 .question-line,
 .answer-line {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -1234,17 +1267,31 @@ select:focus-visible {
   font-weight: 800;
 }
 
-.answer-card-foot {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+.answer-card-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+}
+
+.answer-card-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.answer-answer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .answer-meta {
   flex-wrap: wrap;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: 5px;
   margin-top: 0;
 }
 
@@ -1253,8 +1300,14 @@ select:focus-visible {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   color: #d6e4da;
-  padding: 3px 7px;
+  padding: 3px 6px;
   font-size: 12px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.answer-meta .answer-progress-chip {
+  color: var(--muted);
 }
 
 .answer-meta .answer-score-chip {
@@ -1262,6 +1315,18 @@ select:focus-visible {
   background: rgba(216, 168, 79, 0.12);
   color: #f4dca0;
   font-weight: 800;
+}
+
+.breakthrough-chip {
+  border: 1px solid rgba(216, 168, 79, 0.42);
+  border-radius: 999px;
+  background: rgba(216, 168, 79, 0.1);
+  color: #f4dca0;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.15;
+  padding: 4px 7px;
+  white-space: nowrap;
 }
 
 .answer-yes {
@@ -1292,10 +1357,11 @@ select:focus-visible {
 
 .ask-box {
   display: grid;
-  grid-template-columns: minmax(150px, 190px) 1fr 108px;
+  grid-template-columns: minmax(118px, 150px) minmax(0, 1fr) 92px;
+  align-items: stretch;
   gap: 8px;
   border-top: 1px solid var(--border);
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
 .ask-box .primary-button {
@@ -1312,8 +1378,9 @@ select:focus-visible {
 }
 
 .ask-box textarea {
-  min-height: 48px;
-  max-height: 96px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 88px;
   resize: vertical;
 }
 
@@ -1345,7 +1412,7 @@ select:focus-visible {
 
 .side-panel {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto minmax(120px, auto);
+  grid-template-rows: minmax(260px, 1fr) auto minmax(92px, auto);
   gap: 12px;
   min-height: 0;
   overflow: hidden;
@@ -1365,10 +1432,37 @@ select:focus-visible {
   margin-bottom: 10px;
 }
 
+.side-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  min-height: 0;
+}
+
+.side-compact-section {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 12px;
+}
+
+.side-section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.side-section-heading h2 {
+  margin-bottom: 0;
+}
+
 .player-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  max-height: 96px;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .player-pill {
@@ -1379,7 +1473,15 @@ select:focus-visible {
   border-radius: 999px;
   background: rgba(95, 140, 134, 0.13);
   color: #d6e4da;
-  padding: 6px 8px;
+  min-width: 0;
+  padding: 5px 8px;
+}
+
+.player-pill > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .host-badge {
@@ -1395,7 +1497,10 @@ select:focus-visible {
 
 .score-list {
   display: grid;
-  gap: 8px;
+  gap: 7px;
+  max-height: 160px;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .score-row {
@@ -1404,7 +1509,7 @@ select:focus-visible {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(5, 7, 7, 0.32);
-  padding: 8px 10px;
+  padding: 7px 9px;
 }
 
 .score-row span {
@@ -1417,15 +1522,17 @@ select:focus-visible {
 }
 
 .settlement-button {
-  width: 100%;
-  min-height: 36px;
+  width: auto;
+  min-height: 28px;
   border: 1px solid rgba(216, 168, 79, 0.4);
-  border-radius: 8px;
+  border-radius: 999px;
   background: rgba(216, 168, 79, 0.1);
   color: #f4dca0;
   cursor: pointer;
   font-weight: 700;
-  margin-bottom: 10px;
+  margin: 0;
+  padding: 4px 8px;
+  white-space: nowrap;
 }
 
 .chat-section {
@@ -1673,8 +1780,14 @@ select:focus-visible {
   }
 
   .room-topbar {
+    grid-template-columns: 1fr;
     align-items: stretch;
-    flex-direction: column;
+    gap: 8px;
+  }
+
+  .room-title-meta {
+    justify-content: flex-start;
+    overflow: hidden;
   }
 
   .room-topbar .primary-button,
@@ -1699,13 +1812,13 @@ select:focus-visible {
 
   .side-panel {
     order: 2;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: minmax(300px, auto) auto auto;
     overflow: visible;
   }
 
   .chat-section {
-    min-height: clamp(360px, 52vh, 540px);
+    min-height: clamp(300px, 46vh, 500px);
   }
 
   .side-panel .side-section:not(.chat-section) {
@@ -1727,24 +1840,30 @@ select:focus-visible {
     font-size: 13px;
   }
 
+  .side-summary-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
   .player-list {
-    max-height: 76px;
+    max-height: 112px;
     overflow: auto;
   }
 
   .score-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-height: 150px;
+    grid-template-columns: 1fr;
+    max-height: 112px;
     overflow: auto;
     padding-right: 2px;
   }
 
   .settlement-button {
-    margin: 0 0 8px;
+    min-height: 26px;
+    padding: 3px 7px;
   }
 
   .notes-section {
-    max-height: 150px;
+    max-height: 120px;
     overflow: auto;
   }
 
@@ -1767,12 +1886,17 @@ select:focus-visible {
     justify-self: start;
   }
 
-  .answer-card-foot {
-    display: grid;
+  .answer-card {
+    padding-right: 42px;
   }
 
-  .icon-button {
-    justify-self: start;
+  .answer-card-top,
+  .answer-answer-row {
+    grid-template-columns: 1fr;
+  }
+
+  .answer-meta {
+    justify-content: flex-start;
   }
 
   .settlement-dialog {

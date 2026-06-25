@@ -85,40 +85,44 @@ export function SidePanel({
           </button>
         </div>
       </section>
-      <section className="side-section players-section">
-        <h2>
-          <Users size={17} /> 在线用户 ({room.players.length})
-        </h2>
-        <div className="player-list">
-          {room.players.map((player) => (
-            <span className="player-pill" key={player.id}>
-              <span>{player.name}{player.id === playerId ? "（你）" : ""}</span>
-              {player.isHost && <strong className="host-badge">房主</strong>}
-            </span>
-          ))}
-        </div>
-      </section>
-      <section className="side-section score-section">
-        <h2>
-          <Award size={17} /> 贡献榜
-        </h2>
-        {room.answerUnlocked && (
-          <button className="settlement-button" onClick={onOpenSettlement}>
-            查看结算
-          </button>
-        )}
-        <div className="score-list">
-          {rankedPlayers.map((player) => (
-            <div className="score-row" key={player.id}>
-              <span>
-                {player.name}
-                {player.id === playerId ? "（你）" : ""}
+      <div className="side-summary-grid">
+        <section className="side-section players-section side-compact-section">
+          <h2>
+            <Users size={17} /> 在线用户 ({room.players.length})
+          </h2>
+          <div className="player-list">
+            {room.players.map((player) => (
+              <span className="player-pill" key={player.id}>
+                <span>{player.name}{player.id === playerId ? "（你）" : ""}</span>
+                {player.isHost && <strong className="host-badge">房主</strong>}
               </span>
-              <strong>{player.score}</strong>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+        <section className="side-section score-section side-compact-section">
+          <div className="side-section-heading">
+            <h2>
+              <Award size={17} /> 贡献榜
+            </h2>
+            {room.answerUnlocked && (
+              <button className="settlement-button" onClick={onOpenSettlement}>
+                查看结算
+              </button>
+            )}
+          </div>
+          <div className="score-list">
+            {rankedPlayers.map((player) => (
+              <div className="score-row" key={player.id}>
+                <span>
+                  {player.name}
+                  {player.id === playerId ? "（你）" : ""}
+                </span>
+                <strong>{player.score}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
       <section className="side-section notes-section">
         <h2>
           <NotebookTabs size={17} /> 调查卷宗

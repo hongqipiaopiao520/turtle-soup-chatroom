@@ -88,9 +88,10 @@ export function RoomPage({
         <button className="ghost-button" onClick={onBack}>
           <ArrowLeft size={16} /> 离开
         </button>
-        <div>
+        <div className="room-title-meta">
           <h1>私人房间</h1>
           <span className={`status-pill room-status-${room.status}`}>{statusLabel}</span>
+          <span className="room-code-pill">{room.id}</span>
         </div>
         <button className="primary-button" onClick={copyInvite}>
           <Link size={16} /> {copied ? "已复制" : "邀请好友"}

@@ -22,14 +22,17 @@ describe("layout CSS", () => {
   it("prioritizes the mobile side-panel chat area", () => {
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*order:\s*2/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.host-panel\s*\{[^}]*order:\s*3/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*display:\s*flex/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*flex-direction:\s*column/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.chat-section\s*\{[^}]*min-height:\s*clamp\(360px,\s*52vh,\s*540px\)/);
+    expect(css).toMatch(/\.side-summary-grid\s*\{[^}]*min-height:\s*0/s);
+    expect(css).toMatch(/\.player-list\s*\{[^}]*max-height:\s*96px/s);
+    expect(css).toMatch(/\.score-list\s*\{[^}]*max-height:\s*160px/s);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.chat-section\s*\{[^}]*min-height:\s*clamp\(300px,\s*46vh,\s*500px\)/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel \.side-section:not\(\.chat-section\)\s*\{[^}]*padding:\s*10px/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel \.side-section:not\(\.chat-section\) h2\s*\{[^}]*font-size:\s*14px/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.score-list\s*\{[^}]*max-height:\s*150px/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-summary-grid\s*\{[^}]*grid-template-columns:\s*1fr 1fr/s);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.score-list\s*\{[^}]*max-height:\s*112px/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.score-list\s*\{[^}]*overflow:\s*auto/);
-    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.notes-section\s*\{[^}]*max-height:\s*150px/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.player-list\s*\{[^}]*max-height:\s*112px/);
+    expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.notes-section\s*\{[^}]*max-height:\s*120px/);
   });
 
   it("keeps the room option checkbox compact inside the name dialog", () => {
@@ -39,7 +42,17 @@ describe("layout CSS", () => {
   });
 
   it("keeps the host submit button text on one line while pending", () => {
-    expect(css).toMatch(/\.ask-box\s*\{[^}]*grid-template-columns:\s*minmax\(150px,\s*190px\) 1fr 108px/s);
+    expect(css).toMatch(/\.ask-box\s*\{[^}]*grid-template-columns:\s*minmax\(118px,\s*150px\) minmax\(0,\s*1fr\) 92px/s);
     expect(css).toMatch(/\.ask-box \.primary-button\s*\{[^}]*white-space:\s*nowrap/s);
+    expect(css).toMatch(/\.ask-box textarea\s*\{[^}]*height:\s*44px/s);
+  });
+
+  it("keeps room top status and answer-card controls compact", () => {
+    expect(css).toMatch(/\.room-title-meta\s*\{[^}]*flex-wrap:\s*nowrap/s);
+    expect(css).toMatch(/\.room-title-meta\s*\{[^}]*white-space:\s*nowrap/s);
+    expect(css).toMatch(/\.answer-card\s*\{[^}]*position:\s*relative/s);
+    expect(css).toMatch(/\.answer-card-actions\s*\{[^}]*position:\s*absolute/s);
+    expect(css).toMatch(/\.answer-card-actions\s*\{[^}]*top:\s*10px/s);
+    expect(css).toMatch(/\.answer-answer-row\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/s);
   });
 });

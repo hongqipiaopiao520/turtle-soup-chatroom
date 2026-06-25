@@ -66,21 +66,7 @@ export function HostPanel({
                 className={`answer-card answer-${item.answerType} ${item.contributionScore > 0 ? "answer-scored" : ""}`}
                 key={item.id}
               >
-                <div className="question-line">
-                  <span className="line-label">{item.playerName}</span>
-                  <p>{item.question}</p>
-                </div>
-                <div className="answer-line">
-                  <span className="line-label host-line-label">小歪</span>
-                  <p>{item.answer}</p>
-                </div>
-                <div className="answer-card-foot">
-                  <div className="answer-meta">
-                    <span>完成度 {item.progress}%</span>
-                    {item.progressDelta > 0 && <span className="answer-score-chip">+{item.progressDelta}%</span>}
-                    {item.contributionScore > 0 && <span className="answer-score-chip">{item.contributionScore} 分</span>}
-                    {item.isBreakthrough && <span>关键突破</span>}
-                  </div>
+                <div className="answer-card-actions">
                   <button
                     className={`icon-button pin-answer-button ${item.pinned ? "pin-answer-button-active" : ""}`}
                     onClick={() => onPin(item.id)}
@@ -89,6 +75,24 @@ export function HostPanel({
                   >
                     <Pin size={15} />
                   </button>
+                </div>
+                <div className="answer-card-top">
+                  <div className="question-line">
+                    <span className="line-label">{item.playerName}</span>
+                    <p>{item.question}</p>
+                  </div>
+                  <div className="answer-meta">
+                    <span className="answer-progress-chip">完成度 {item.progress}%</span>
+                    {item.progressDelta > 0 && <span className="answer-score-chip">+{item.progressDelta}%</span>}
+                    {item.contributionScore > 0 && <span className="answer-score-chip">{item.contributionScore} 分</span>}
+                  </div>
+                </div>
+                <div className="answer-answer-row">
+                  <div className="answer-line">
+                    <span className="line-label host-line-label">小歪</span>
+                    <p>{item.answer}</p>
+                  </div>
+                  {item.isBreakthrough && <span className="breakthrough-chip">关键突破</span>}
                 </div>
               </article>
             ))}

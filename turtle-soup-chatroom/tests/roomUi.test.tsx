@@ -203,6 +203,45 @@ describe("room UI settlement", () => {
     expect(markup).not.toContain(">收藏</button>");
   });
 
+  it("renders room status as a compact single-line meta strip", () => {
+    const room = makeSolvedRoom();
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { origin: "http://localhost:5173" }, setTimeout: () => 0 }
+    });
+
+    const markup = renderToStaticMarkup(
+      <RoomPage
+        room={room}
+        playerId="player-host"
+        onBack={() => undefined}
+        onAsk={() => undefined}
+        onPin={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+
+    expect(markup).toContain("room-title-meta");
+    expect(markup).toContain("room-code-pill");
+    expect(markup).toMatch(/room-title-meta[\s\S]*私人房间[\s\S]*汤底已解锁[\s\S]*room-ui-test/);
+  });
+
+  it("places answer actions in the top-right corner of each answer card", () => {
+    const markup = renderToStaticMarkup(
+      <HostPanel room={makeSolvedRoom()} onAsk={() => undefined} onPin={() => undefined} />
+    );
+
+    expect(markup).toContain("answer-card-top");
+    expect(markup).toContain("answer-card-actions");
+    expect(markup.indexOf("answer-card-actions")).toBeLessThan(markup.indexOf("answer-line"));
+  });
+
   it("renders chat as a constrained scroll region", () => {
     const room = {
       ...makeSolvedRoom(),
@@ -282,8 +321,38 @@ describe("room UI settlement", () => {
       />
     );
 
-    expect(markup).toContain('class="side-section score-section"');
+    expect(markup).toContain("score-section side-compact-section");
     expect(markup.indexOf("查看结算")).toBeLessThan(markup.indexOf('class="score-list"'));
+  });
+
+  it("groups compact side summaries so long player lists cannot cover chat or notes", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      players: Array.from({ length: 12 }, (_, index) => ({
+        id: `player-${index}`,
+        name: index === 0 ? "房主" : `玩家${index}`,
+        isHost: index === 0,
+        joinedAt: "2026-06-23T00:00:00.000Z",
+        score: 900 - index * 50,
+        hits: 0,
+        bestDelta: 0
+      }))
+    };
+
+    const markup = renderToStaticMarkup(
+      <SidePanel
+        room={room}
+        playerId="player-0"
+        onOpenSettlement={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    expect(markup).toContain("side-summary-grid");
+    expect(markup).toContain("players-section side-compact-section");
+    expect(markup).toContain("score-section side-compact-section");
+    expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("side-summary-grid"));
+    expect(markup.indexOf("side-summary-grid")).toBeLessThan(markup.indexOf("调查卷宗"));
   });
 
   it("renders host judging feedback while the AI host is pending", () => {
