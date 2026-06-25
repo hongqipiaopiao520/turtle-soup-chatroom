@@ -24,6 +24,16 @@ AI_IMPORT_TIMEOUT_MS=60000
 PORT=8787
 ```
 
+If image import needs a different multimodal gateway, configure it separately:
+
+```bash
+AI_IMAGE_BASE_URL=https://api.xiaomimimo.com/v1
+AI_IMAGE_API_KEY=replace_me
+AI_IMAGE_MODEL=mimo-v2.5
+```
+
+For `api.xiaomimimo.com`, the server automatically uses the `api-key` header expected by MiMo. Text host/chat imports continue using the normal `AI_*` or `MIMO_*` values.
+
 You can also use the MIMO-specific names:
 
 ```bash
@@ -31,6 +41,9 @@ MIMO_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
 MIMO_API_KEY=replace_me
 MIMO_AGENT_MODEL=mimo-v2.5-pro
 MIMO_FAST_MODEL=mimo-v2-flash
+MIMO_IMAGE_BASE_URL=https://api.xiaomimimo.com/v1
+MIMO_IMAGE_API_KEY=replace_me
+MIMO_IMAGE_MODEL=mimo-v2.5
 PORT=8787
 ```
 
