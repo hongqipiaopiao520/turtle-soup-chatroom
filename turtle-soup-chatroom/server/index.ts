@@ -2,7 +2,7 @@ import express from "express";
 import http from "node:http";
 import { Server } from "socket.io";
 import { seedPuzzles } from "../src/data/seedPuzzles";
-import { createApp } from "./app";
+import { buildCorsOptions, createApp } from "./app";
 import { loadLocalEnv } from "./env";
 import { loadPersistedRooms } from "./roomPersistence";
 import { exportRoomsSnapshot, importRoomsSnapshot } from "./roomStore";
@@ -25,10 +25,9 @@ if (storedRooms.length === 0) {
 }
 const app = createApp(puzzleRepository);
 const server = http.createServer(app);
+
 const io = new Server(server, {
-  cors: {
-    origin: true
-  }
+  cors: buildCorsOptions()
 });
 
 registerSocketHandlers(io, { puzzleRepository, roomRepository });

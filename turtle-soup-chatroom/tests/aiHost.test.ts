@@ -44,7 +44,7 @@ describe("parseHostResponse", () => {
     const result = parseHostResponse('{"answerType":"yes","answer":"是。这个方向有帮助。","progress":35}');
     expect(result).toEqual({
       answerType: "yes",
-      answer: "是。这个方向有帮助。",
+      answer: "是",
       progress: 35
     });
   });
@@ -59,7 +59,7 @@ describe("parseHostResponse", () => {
   it("rejects unknown answer types", () => {
     const result = parseHostResponse('{"answerType":"maybe","answer":"不知道","progress":200}');
     expect(result.answerType).toBe("partial");
-    expect(result.answer).toBe("不知道");
+    expect(result.answer).toBe("部分相关");
     expect(result.progress).toBe(100);
   });
 
@@ -67,7 +67,7 @@ describe("parseHostResponse", () => {
     const result = parseHostResponse('{"answerType":"no","answer":"不是。"}');
     expect(result).toEqual({
       answerType: "no",
-      answer: "不是。",
+      answer: "不是",
       progress: 0
     });
   });
@@ -76,7 +76,7 @@ describe("parseHostResponse", () => {
     const result = parseHostResponse('{"answerType":"yes","answer":"是。","progress":"42"}');
     expect(result).toEqual({
       answerType: "yes",
-      answer: "是。",
+      answer: "是",
       progress: 42
     });
   });
@@ -88,7 +88,7 @@ describe("parseHostResponse", () => {
 
     expect(result).toEqual({
       answerType: "partial",
-      answer: "覆盖了入侵方向。",
+      answer: "部分相关",
       progress: 50,
       coveredPointIds: ["intrusion", "liquid-tampered"],
       coverageConfidence: 0.82
@@ -113,7 +113,7 @@ describe("askHost", () => {
 
     await expect(askHost(askHostInput)).resolves.toEqual({
       answerType: "yes",
-      answer: "是。",
+      answer: "是",
       progress: 0
     });
 
@@ -144,7 +144,7 @@ describe("askHost", () => {
 
     await expect(askHost(askHostInput)).resolves.toEqual({
       answerType: "no",
-      answer: "不是。",
+      answer: "不是",
       progress: 0
     });
 

@@ -73,6 +73,7 @@ describe("/api/puzzles", () => {
     expect(shouldServeClientRoute("GET", "/rooms/example")).toBe(true);
     expect(shouldServeClientRoute("GET", "/admin")).toBe(true);
     expect(shouldServeClientRoute("GET", "/api/puzzles")).toBe(false);
+    expect(shouldServeClientRoute("GET", "/share/room/abc")).toBe(false);
     expect(shouldServeClientRoute("POST", "/rooms/example")).toBe(false);
   });
 });

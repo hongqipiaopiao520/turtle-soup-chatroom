@@ -1,16 +1,24 @@
-import { Pin, Send } from "lucide-react";
+import { Eye, Lightbulb, Pin, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { RoomState } from "../shared/types";
+import type { PublicRoomState } from "../shared/types";
 import { SegmentedControl } from "./ui";
 
 export function HostPanel({
   room,
+  playerId,
   onAsk,
-  onPin
+  onPin,
+  onReveal,
+  onRevealHint,
+  onRequestHint
 }: {
-  room: RoomState;
+  room: PublicRoomState;
+  playerId?: string;
   onAsk: (question: string, mode: "question" | "guess") => void;
   onPin: (answerId: string) => void;
+  onReveal: () => void;
+  onRevealHint: () => void;
+  onRequestHint: () => void;
 }) {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"question" | "guess">("question");
@@ -22,6 +30,13 @@ export function HostPanel({
   const isQuestionLimitReached = !hasUnlimitedQuestions && remainingQuestions === 0;
   const isThinking = Boolean(room.hostPending);
   const isDisabled = isThinking || isSolved || (mode === "question" && isQuestionLimitReached);
+  const isHost = room.players.find((p) => p.id === playerId)?.isHost ?? false;
+  const isNearTruth = room.progress >= 95 && !isSolved;
+  const [confirmReveal, setConfirmReveal] = useState(false);
+  const totalHints = room.puzzle.hintCount;
+  const hasHints = totalHints > 0;
+  const hintsRemaining = totalHints - room.hintsRevealed;
+  const hasHintRequests = room.hintRequestedBy.length > 0;
 
   useEffect(() => {
     const log = hostLogRef.current;
@@ -112,8 +127,58 @@ export function HostPanel({
         )}
       </div>
       {isSolved && <p className="flow-hint">本局已解出，主持人问答已结束。</p>}
+      {!isSolved && isNearTruth && (
+        <p className="flow-hint">已接近真相，请提交最终推理来解锁汤底。</p>
+      )}
       {!isSolved && isQuestionLimitReached && mode === "question" && (
         <p className="flow-hint">普通提问次数已用完，可以继续提交完整推理争取解锁汤底。</p>
+      )}
+      {!isSolved && isHost && (
+        <div className="host-reveal-area">
+          {confirmReveal ? (
+            <>
+              <span className="flow-hint">确定要提前揭晓汤底吗？揭晓后本局结束。</span>
+              <button className="ghost-button" onClick={() => setConfirmReveal(false)}>取消</button>
+              <button className="primary-button" onClick={() => { onReveal(); setConfirmReveal(false); }}>
+                <Eye size={15} /> 确认揭晓
+              </button>
+            </>
+          ) : (
+            <button className="ghost-button" onClick={() => setConfirmReveal(true)}>
+              <Eye size={15} /> 房主揭晓
+            </button>
+          )}
+        </div>
+      )}
+      {!isSolved && hasHints && (
+        <div className="hint-area">
+          {room.revealedHints.length > 0 && (
+            <div className="revealed-hints">
+              {room.revealedHints.map((hint, index) => (
+                <p key={index} className="hint-item">
+                  <Lightbulb size={14} /> 提示 {index + 1}：{hint}
+                </p>
+              ))}
+            </div>
+          )}
+          {isHost ? (
+            hintsRemaining > 0 ? (
+              <button className="ghost-button" onClick={onRevealHint}>
+                <Lightbulb size={15} /> 发放提示 ({room.hintsRevealed}/{totalHints})
+                {hasHintRequests && <span className="hint-request-dot">{room.hintRequestedBy.length} 人请求</span>}
+              </button>
+            ) : (
+              <span className="flow-hint">提示已用完</span>
+            )
+          ) : (
+            hintsRemaining > 0 && (
+              <button className="ghost-button" onClick={onRequestHint}>
+                <Lightbulb size={15} /> 请求提示
+                {hasHintRequests && <span className="hint-request-count">{room.hintRequestedBy.length} 人已请求</span>}
+              </button>
+            )
+          )}
+        </div>
       )}
       {isThinking && (
         <p className="host-pending" aria-live="polite">

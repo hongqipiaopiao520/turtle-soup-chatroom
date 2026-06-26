@@ -7,6 +7,7 @@ export type HostAnswerType =
   | "no"
   | "irrelevant"
   | "partial"
+  | "invalid"
   | "solved"
   | "unsolved";
 
@@ -31,7 +32,9 @@ export interface SolutionPointDefinition {
   aliases: string[];
 }
 
-export type PublicPuzzle = Omit<Puzzle, "truth">;
+export type PublicPuzzle = Omit<Puzzle, "truth" | "solutionPoints"> & {
+  hintCount: number;
+};
 
 export type PuzzleStatus = "draft" | "reviewing" | "published" | "rejected";
 
@@ -86,6 +89,8 @@ export interface HostAnswer {
   createdAt: string;
 }
 
+export type PublicHostAnswer = Omit<HostAnswer, "coveredPointIds" | "coverageConfidence">;
+
 export interface HostPending {
   id: string;
   playerId: string;
@@ -125,10 +130,40 @@ export interface RoomState {
   answerUnlocked: boolean;
   truthRevealed: boolean;
   settlement?: RoomSettlement;
+  hintsRevealed: number;
+  hintRequestedBy: string[];
+  revealedHints: string[];
+  createdAt: string;
+}
+
+export interface PublicRoomState {
+  id: string;
+  puzzle: PublicPuzzle;
+  status: RoomStatus;
+  players: Player[];
+  hostLog: PublicHostAnswer[];
+  hostPending?: HostPending;
+  chatMessages: ChatMessage[];
+  caseNotes: CaseNote[];
+  questionLimit: number;
+  questionsUsed: number;
+  progress: number;
+  answerUnlocked: boolean;
+  truthRevealed: boolean;
+  truth?: string;
+  settlement?: RoomSettlement;
+  hintsRevealed: number;
+  hintRequestedBy: string[];
+  revealedHints: string[];
   createdAt: string;
 }
 
 export interface RoomSession {
+  room: PublicRoomState;
+  playerId: string;
+}
+
+export interface RoomStoreSession {
   room: RoomState;
   playerId: string;
 }
@@ -137,4 +172,11 @@ export interface RoomSettlement {
   mvpPlayerId?: string;
   bestAnswerId?: string;
   unlockingPlayerId?: string;
+  finalGuess?: string;
+  finalGuessPlayerId?: string;
+  finalGuessResult?: "solved" | "unsolved";
+  hintsRevealed: number;
+  durationMs: number;
+  endedAt: string;
+  endedBy: "solved" | "host-reveal";
 }

@@ -39,6 +39,9 @@ function makeRoom(overrides: Partial<RoomState> = {}): RoomState {
     progress: 0,
     answerUnlocked: false,
     truthRevealed: false,
+    hintsRevealed: 0,
+    hintRequestedBy: [],
+    revealedHints: [],
     createdAt: "2026-06-23T00:00:00.000Z",
     ...overrides
   };

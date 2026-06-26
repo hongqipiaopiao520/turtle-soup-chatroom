@@ -12,7 +12,7 @@ import { AdminPage } from "./components/AdminPage";
 import { HomePage } from "./components/HomePage";
 import { PuzzleDetail } from "./components/PuzzleDetail";
 import { RoomPage } from "./components/RoomPage";
-import { seedPuzzles } from "./data/seedPuzzles";
+import { publicSeedPuzzles } from "./data/seedPuzzles";
 import type { PublicPuzzle } from "./shared/types";
 
 type View =
@@ -34,7 +34,7 @@ export function App() {
 
 function PlayerApp() {
   const [view, setView] = useState<View>({ name: "home" });
-  const [puzzles, setPuzzles] = useState<PublicPuzzle[]>(seedPuzzles);
+  const [puzzles, setPuzzles] = useState<PublicPuzzle[]>(publicSeedPuzzles);
   const [pendingPuzzle, setPendingPuzzle] = useState<PublicPuzzle | null>(null);
   const [nameRequest, setNameRequest] = useState<NameRequest | null>(null);
   const [recentRoom, setRecentRoom] = useState(() => mostRecentRoomSession());
@@ -50,7 +50,7 @@ function PlayerApp() {
       })
       .catch(() => {
         if (isActive) {
-          setPuzzles(seedPuzzles);
+          setPuzzles(publicSeedPuzzles);
         }
       });
     return () => {
@@ -159,6 +159,9 @@ function PlayerApp() {
         }}
         onAsk={roomSocket.askHost}
         onPin={roomSocket.pinAnswer}
+        onReveal={roomSocket.revealTruth}
+        onRevealHint={roomSocket.revealHint}
+        onRequestHint={roomSocket.requestHint}
         onSendChat={roomSocket.sendChat}
         isChatPending={roomSocket.isChatPending}
       />

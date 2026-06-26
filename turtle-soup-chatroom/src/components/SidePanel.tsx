@@ -1,6 +1,6 @@
 import { Award, MessageCircle, NotebookTabs, Send, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { RoomState } from "../shared/types";
+import type { PublicRoomState } from "../shared/types";
 
 export function SidePanel({
   room,
@@ -9,7 +9,7 @@ export function SidePanel({
   onSendChat,
   isChatPending = false
 }: {
-  room: RoomState;
+  room: PublicRoomState;
   playerId: string;
   onOpenSettlement: () => void;
   onSendChat: (body: string) => void;

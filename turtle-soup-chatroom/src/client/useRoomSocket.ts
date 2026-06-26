@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Socket } from "socket.io-client";
-import type { PublicPuzzle, RoomSession, RoomState } from "../shared/types";
+import type { PublicPuzzle, PublicRoomState, RoomSession } from "../shared/types";
 import { createSocket } from "./socket";
 
 export function useRoomSocket() {
   const socket = useMemo<Socket>(() => createSocket(), []);
-  const [room, setRoom] = useState<RoomState | null>(null);
+  const [room, setRoom] = useState<PublicRoomState | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isChatPending, setIsChatPending] = useState(false);
@@ -17,7 +17,7 @@ export function useRoomSocket() {
       setError(null);
       setIsChatPending(false);
     };
-    const handleRoomState = (nextRoom: RoomState) => {
+    const handleRoomState = (nextRoom: PublicRoomState) => {
       setRoom(nextRoom);
       setIsChatPending(false);
     };
@@ -65,6 +65,21 @@ export function useRoomSocket() {
     },
     pinAnswer(answerId: string) {
       if (room) socket.emit("case:pin", { roomId: room.id, answerId });
+    },
+    revealTruth() {
+      if (room && playerId) {
+        socket.emit("host:reveal", { roomId: room.id, playerId });
+      }
+    },
+    revealHint() {
+      if (room && playerId) {
+        socket.emit("host:revealHint", { roomId: room.id, playerId });
+      }
+    },
+    requestHint() {
+      if (room && playerId) {
+        socket.emit("player:requestHint", { roomId: room.id, playerId });
+      }
     },
     leaveRoom() {
       if (room && playerId) {

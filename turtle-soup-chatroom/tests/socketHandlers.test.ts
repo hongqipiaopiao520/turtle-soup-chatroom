@@ -10,7 +10,9 @@ import { openDatabase } from "../server/storage/database";
 import { createPuzzleRepository } from "../server/storage/puzzleRepository";
 
 vi.mock("../server/aiHost", () => ({
-  askHost: vi.fn()
+  askHost: vi.fn(),
+  isHostErrorDecision: (decision: { answerType: string; progress: number }) =>
+    decision.answerType === "partial" && decision.progress === 0
 }));
 
 const tmpRoots: string[] = [];
@@ -91,7 +93,7 @@ describe("getPublishedPuzzleForRoom", () => {
 
     registerSocketHandlers(io as never, {
       puzzleRepository: { findById: vi.fn() } as never,
-      roomRepository: { saveAll: vi.fn(), remove: vi.fn() } as never
+      roomRepository: { save: vi.fn(), remove: vi.fn() } as never
     });
     const connectionHandler = io.on.mock.calls[0][1] as (nextSocket: typeof socket) => void;
     connectionHandler(socket);
@@ -152,7 +154,7 @@ describe("getPublishedPuzzleForRoom", () => {
 
     registerSocketHandlers(io as never, {
       puzzleRepository: { findById: vi.fn() } as never,
-      roomRepository: { saveAll: vi.fn(), remove: vi.fn() } as never
+      roomRepository: { save: vi.fn(), remove: vi.fn() } as never
     });
     const connectionHandler = io.on.mock.calls[0][1] as (nextSocket: typeof socket) => void;
     connectionHandler(socket);

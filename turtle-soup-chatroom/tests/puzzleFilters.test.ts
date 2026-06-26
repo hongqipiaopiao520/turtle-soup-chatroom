@@ -1,33 +1,31 @@
 import { describe, expect, it } from "vitest";
-import type { Puzzle } from "../src/shared/types";
+import type { PublicPuzzle } from "../src/shared/types";
 import { filterPuzzles } from "../src/shared/puzzleFilters";
 
-const puzzles: Puzzle[] = [
+const puzzles: PublicPuzzle[] = [
   {
     id: "rain-platform",
     title: "雨夜站台",
     surface: "深夜的站台空无一人，女孩却向空气道谢，然后消失了。",
-    truth: "女孩正在参加一次沉浸式告别仪式。",
-    solutionPoints: ["告别仪式", "不是现实消失"],
     difficulty: "medium",
     tags: ["悬疑", "温情"],
     author: "Demo",
     rating: 8.2,
     plays: 42,
-    createdAt: "2026-06-01"
+    createdAt: "2026-06-01",
+    hintCount: 0
   },
   {
     id: "cold-cup",
     title: "冷掉的水",
     surface: "男人喝了一口冷水后立刻报警。",
-    truth: "水本应是热的，说明屋里有人刚刚替换过杯子。",
-    solutionPoints: ["水本应是热的", "有人进过房间"],
     difficulty: "easy",
     tags: ["本格", "生活"],
     author: "Demo",
     rating: 7.1,
     plays: 88,
-    createdAt: "2026-06-10"
+    createdAt: "2026-06-10",
+    hintCount: 0
   }
 ];
 

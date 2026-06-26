@@ -3,23 +3,22 @@ import { describe, expect, it } from "vitest";
 import { HostPanel } from "../src/components/HostPanel";
 import { RoomPage } from "../src/components/RoomPage";
 import { SidePanel } from "../src/components/SidePanel";
-import type { RoomState } from "../src/shared/types";
+import type { PublicRoomState } from "../src/shared/types";
 
-function makeSolvedRoom(): RoomState {
+function makeSolvedRoom(): PublicRoomState {
   return {
     id: "room-ui-test",
     puzzle: {
       id: "puzzle-ui-test",
       title: "雨夜站台",
       surface: "深夜的站台空无一人，女孩却向空气道谢，然后消失了。",
-      truth: "女孩正在参加一次沉浸式告别仪式。",
-      solutionPoints: ["沉浸式告别仪式", "不是真的消失"],
       difficulty: "medium",
       tags: ["悬疑", "温情"],
       author: "测试",
       rating: 8.4,
       plays: 128,
-      createdAt: "2026-06-23"
+      createdAt: "2026-06-23",
+      hintCount: 0
     },
     status: "solved",
     players: [
@@ -56,10 +55,18 @@ function makeSolvedRoom(): RoomState {
     progress: 96,
     answerUnlocked: true,
     truthRevealed: true,
+    truth: "女孩正在参加一次沉浸式告别仪式。",
+    hintsRevealed: 0,
+    hintRequestedBy: [],
+    revealedHints: [],
     settlement: {
       mvpPlayerId: "player-host",
       bestAnswerId: "answer-best",
-      unlockingPlayerId: "player-host"
+      unlockingPlayerId: "player-host",
+      hintsRevealed: 0,
+      durationMs: 60000,
+      endedAt: "2026-06-23T00:02:00.000Z",
+      endedBy: "solved"
     },
     createdAt: "2026-06-23T00:00:00.000Z"
   };
@@ -77,7 +84,7 @@ describe("room UI settlement", () => {
       />
     );
 
-    expect(markup).not.toContain(room.puzzle.truth);
+    expect(markup).not.toContain(room.truth);
   });
 
   it("renders unlocked truth in a settlement dialog", () => {
@@ -95,6 +102,7 @@ describe("room UI settlement", () => {
         onBack={() => undefined}
         onAsk={() => undefined}
         onPin={() => undefined}
+        onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined}
         onSendChat={() => undefined}
       />
     );
@@ -105,7 +113,7 @@ describe("room UI settlement", () => {
     });
 
     expect(markup).toContain('role="dialog"');
-    expect(markup).toContain(room.puzzle.truth);
+    expect(markup).toContain(room.truth);
     expect(markup).toContain("本局 MVP");
     expect(markup).toContain("破案报告");
     expect(markup).toContain("最佳突破");
@@ -162,6 +170,7 @@ describe("room UI settlement", () => {
         onBack={() => undefined}
         onAsk={() => undefined}
         onPin={() => undefined}
+        onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined}
         onSendChat={() => undefined}
       />
     );
@@ -189,6 +198,7 @@ describe("room UI settlement", () => {
         onBack={() => undefined}
         onAsk={() => undefined}
         onPin={() => undefined}
+        onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined}
         onSendChat={() => undefined}
       />
     );
@@ -218,6 +228,7 @@ describe("room UI settlement", () => {
         onBack={() => undefined}
         onAsk={() => undefined}
         onPin={() => undefined}
+        onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined}
         onSendChat={() => undefined}
       />
     );
@@ -234,7 +245,7 @@ describe("room UI settlement", () => {
 
   it("places answer actions in the top-right corner of each answer card", () => {
     const markup = renderToStaticMarkup(
-      <HostPanel room={makeSolvedRoom()} onAsk={() => undefined} onPin={() => undefined} />
+      <HostPanel room={makeSolvedRoom()} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
     );
 
     expect(markup).toContain("answer-card-top");
@@ -373,7 +384,7 @@ describe("room UI settlement", () => {
     };
 
     const markup = renderToStaticMarkup(
-      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} />
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
     );
 
     expect(markup).toContain("小歪正在思考");
@@ -392,7 +403,7 @@ describe("room UI settlement", () => {
     };
 
     const markup = renderToStaticMarkup(
-      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} />
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
     );
 
     expect(markup).not.toContain("小歪正在思考");
@@ -411,7 +422,7 @@ describe("room UI settlement", () => {
     };
 
     const markup = renderToStaticMarkup(
-      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} />
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
     );
 
     expect(markup).toContain("不限问");
@@ -420,7 +431,7 @@ describe("room UI settlement", () => {
 
   it("marks scored host answers with a subtle visual class", () => {
     const markup = renderToStaticMarkup(
-      <HostPanel room={makeSolvedRoom()} onAsk={() => undefined} onPin={() => undefined} />
+      <HostPanel room={makeSolvedRoom()} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
     );
 
     expect(markup).toContain("answer-scored");
@@ -436,7 +447,7 @@ describe("room UI settlement", () => {
     };
 
     const markup = renderToStaticMarkup(
-      <HostPanel room={room} onAsk={() => undefined} onPin={() => undefined} />
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
     );
 
     expect(markup).toContain("segmented-control");

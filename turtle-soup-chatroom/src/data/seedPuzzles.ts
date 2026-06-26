@@ -1,4 +1,4 @@
-import type { Puzzle } from "../shared/types";
+import type { Puzzle, PublicPuzzle } from "../shared/types";
 
 export const seedPuzzles: Puzzle[] = [
   {
@@ -47,3 +47,13 @@ export const seedPuzzles: Puzzle[] = [
     createdAt: "2026-06-12"
   }
 ];
+
+export function toPublicPuzzle(puzzle: Puzzle): PublicPuzzle {
+  const { truth, solutionPoints, ...publicFields } = puzzle;
+  return {
+    ...publicFields,
+    hintCount: 0
+  };
+}
+
+export const publicSeedPuzzles: PublicPuzzle[] = seedPuzzles.map(toPublicPuzzle);

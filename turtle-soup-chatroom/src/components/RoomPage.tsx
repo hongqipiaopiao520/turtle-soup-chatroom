@@ -1,6 +1,6 @@
-import { ArrowLeft, Award, BadgeCheck, Compass, KeyRound, Link, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Award, BadgeCheck, Clock, Compass, KeyRound, Lightbulb, Link, Sparkles, Target, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { HostAnswer, RoomState } from "../shared/types";
+import type { HostAnswer, PublicHostAnswer, PublicRoomState } from "../shared/types";
 import { HostPanel } from "./HostPanel";
 import { SidePanel } from "./SidePanel";
 
@@ -10,14 +10,22 @@ const difficultyLabel = {
   hard: "困难"
 };
 
-function offTrackScore(answer: HostAnswer) {
+function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}分${seconds.toString().padStart(2, "0")}秒`;
+}
+
+function offTrackScore(answer: PublicHostAnswer) {
   const answerTypeScore =
     answer.answerType === "unsolved" ? 80 : answer.answerType === "irrelevant" ? 50 : answer.answerType === "no" ? 25 : 0;
   const wordingScore = Math.min(answer.question.length, 80) / 2;
   return answerTypeScore + wordingScore;
 }
 
-function selectLeastUsefulQuestion(hostLog: HostAnswer[]) {
+function selectLeastUsefulQuestion(hostLog: PublicHostAnswer[]) {
   return [...hostLog]
     .filter((item) => item.progressDelta === 0 && item.contributionScore === 0 && item.answerType !== "solved")
     .sort((a, b) => offTrackScore(b) - offTrackScore(a) || Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
@@ -29,19 +37,26 @@ export function RoomPage({
   onBack,
   onAsk,
   onPin,
+  onReveal,
+  onRevealHint,
+  onRequestHint,
   onSendChat,
   isChatPending = false
 }: {
-  room: RoomState;
+  room: PublicRoomState;
   playerId: string;
   onBack: () => void;
   onAsk: (question: string, mode: "question" | "guess") => void;
   onPin: (answerId: string) => void;
+  onReveal: () => void;
+  onRevealHint: () => void;
+  onRequestHint: () => void;
   onSendChat: (body: string) => void;
   isChatPending?: boolean;
 }) {
   const inviteUrl = `${window.location.origin}?room=${room.id}`;
   const [copied, setCopied] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [settlementOpen, setSettlementOpen] = useState(room.answerUnlocked);
   const lastUnlockedRoomRef = useRef<string | null>(room.answerUnlocked ? room.id : null);
   const statusLabel = room.answerUnlocked ? "汤底已解锁" : "进行中";
@@ -60,6 +75,14 @@ export function RoomPage({
     .sort((a, b) => b.contributionScore - a.contributionScore || b.progressDelta - a.progressDelta)
     .slice(0, 3);
   const leastUsefulQuestion = selectLeastUsefulQuestion(room.hostLog);
+  const breakthroughAnswers = [...room.hostLog]
+    .filter((item) => item.progressDelta >= 20)
+    .sort((a, b) => b.progressDelta - a.progressDelta);
+  const settlement = room.settlement;
+  const finalGuessPlayer = settlement?.finalGuessPlayerId
+    ? room.players.find((p) => p.id === settlement.finalGuessPlayerId)
+    : undefined;
+  const endedByHost = settlement?.endedBy === "host-reveal";
 
   useEffect(() => {
     if (room.answerUnlocked && lastUnlockedRoomRef.current !== room.id) {
@@ -79,6 +102,32 @@ export function RoomPage({
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
       window.prompt("复制邀请链接", inviteUrl);
+    }
+  }
+
+  function buildShareText(): string {
+    const lines = [
+      `我玩了海龟汤《${room.puzzle.title}》`,
+      `难度：${difficultyLabel[room.puzzle.difficulty]}`,
+      `提问 ${room.questionsUsed} 次`,
+    ];
+    if (settlement) {
+      lines.push(`用时 ${formatDuration(settlement.durationMs)}`);
+    }
+    if (room.hintsRevealed > 0) lines.push(`用了 ${room.hintsRevealed} 条提示`);
+    if (mvp?.id === playerId) lines.push("我拿了 MVP！");
+    lines.push(`来挑战：${inviteUrl}`);
+    return lines.join("\n");
+  }
+
+  async function copyShareText() {
+    const text = buildShareText();
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      window.prompt("复制战绩文案", text);
     }
   }
 
@@ -111,7 +160,7 @@ export function RoomPage({
           </div>
           <p className="surface-text">{room.puzzle.surface}</p>
         </aside>
-        <HostPanel room={room} onAsk={onAsk} onPin={onPin} />
+        <HostPanel room={room} onAsk={onAsk} onPin={onPin} onReveal={onReveal} onRevealHint={onRevealHint} onRequestHint={onRequestHint} playerId={playerId} />
         <SidePanel
           room={room}
           playerId={playerId}
@@ -129,6 +178,13 @@ export function RoomPage({
             <div className="settlement-hero">
               <span className="panel-kicker">破案报告</span>
               <h2 id="settlement-title">{room.puzzle.title}</h2>
+              <div className="settlement-meta-row">
+                <span className={`difficulty difficulty-${room.puzzle.difficulty}`}>{difficultyLabel[room.puzzle.difficulty]}</span>
+                <span><Clock size={14} /> {settlement ? formatDuration(settlement.durationMs) : "—"}</span>
+                <span>提问 {room.questionsUsed} 次</span>
+                {room.hintsRevealed > 0 && <span><Lightbulb size={14} /> 提示 {room.hintsRevealed} 条</span>}
+                {endedByHost && <span className="host-reveal-tag">房主揭晓</span>}
+              </div>
               <div className="settlement-score">
                 <Sparkles size={20} />
                 <strong>{room.progress}%</strong>
@@ -137,8 +193,18 @@ export function RoomPage({
             </div>
             <div className="settlement-truth-block">
               <span>汤底揭晓</span>
-              <p className="truth-text">{room.puzzle.truth}</p>
+              <p className="truth-text">{room.truth}</p>
             </div>
+            {settlement?.finalGuess && (
+              <div className="settlement-final-guess">
+                <span><Target size={15} /> 最终推理</span>
+                <p className="final-guess-text">{settlement.finalGuess}</p>
+                <div className="final-guess-meta">
+                  <strong>{finalGuessPlayer?.name ?? "未知"}</strong>
+                  <span>{settlement.finalGuessResult === "solved" ? "✓ 成功解出" : endedByHost ? "未提交推理" : "× 尚未解出"}</span>
+                </div>
+              </div>
+            )}
             <div className="settlement-awards">
               <article>
                 <span><Award size={15} /> 本局 MVP</span>
@@ -157,27 +223,49 @@ export function RoomPage({
                 <strong>{leastUsefulQuestion ? leastUsefulQuestion.question : "本局没有明显绕远"}</strong>
               </article>
             </div>
-            {keyReplies.length > 0 && (
-              <div className="settlement-key-replies">
-                <span>关键回复记录</span>
-                {keyReplies.map((item) => (
-                  <p key={item.id}>
-                    <strong>{item.playerName}</strong>：{item.question}
-                  </p>
+            {breakthroughAnswers.length > 0 && (
+              <div className="settlement-breakthrough-list">
+                <span>关键突破问答</span>
+                {breakthroughAnswers.map((item) => (
+                  <div key={item.id} className="breakthrough-item">
+                    <span className="breakthrough-player">{item.playerName}</span>
+                    <span className="breakthrough-question">{item.question}</span>
+                    <span className="breakthrough-delta">+{item.progressDelta}%</span>
+                  </div>
                 ))}
               </div>
             )}
-            <div className="settlement-grid">
-              <span>本局 MVP</span>
-              <strong>
-                <Award size={16} /> {mvp?.name ?? "暂无"}
-              </strong>
-              <span>最佳回答</span>
-              <strong>{bestAnswer ? `${bestAnswer.playerName} +${bestAnswer.progressDelta}%` : "暂无"}</strong>
+            <div className="settlement-timeline">
+              <span>完整问答时间线</span>
+              {room.hostLog.map((item, index) => (
+                <div key={item.id} className="timeline-item">
+                  <span className="timeline-index">#{index + 1}</span>
+                  <div className="timeline-content">
+                    <span className="timeline-player">{item.playerName}</span>
+                    <span className="timeline-question">{item.question}</span>
+                    <span className={`timeline-answer timeline-answer-${item.answerType}`}>{item.answer}</span>
+                    {item.progressDelta > 0 && <span className="timeline-delta">+{item.progressDelta}%</span>}
+                  </div>
+                </div>
+              ))}
+              {room.hostLog.length === 0 && <p className="muted">本局无问答记录</p>}
             </div>
-            <button className="primary-button settlement-confirm" onClick={() => setSettlementOpen(false)}>
-              收下汤底
-            </button>
+            {room.revealedHints.length > 0 && (
+              <div className="settlement-hints">
+                <span><Lightbulb size={15} /> 使用提示</span>
+                {room.revealedHints.map((hint, index) => (
+                  <p key={index}>提示 {index + 1}：{hint}</p>
+                ))}
+              </div>
+            )}
+            <div className="settlement-actions">
+              <button className="ghost-button" onClick={copyShareText}>
+                <Link size={15} /> {shareCopied ? "已复制战绩" : "分享战绩"}
+              </button>
+              <button className="primary-button settlement-confirm" onClick={() => setSettlementOpen(false)}>
+                收下汤底
+              </button>
+            </div>
           </div>
         </section>
       )}

@@ -1,19 +1,22 @@
 import type { Server, Socket } from "socket.io";
 import type { Puzzle } from "../src/shared/types";
-import { askHost } from "./aiHost";
+import { askHost, isHostErrorDecision } from "./aiHost";
 import {
   addChatMessage,
   addHostAnswer,
   clearHostPending,
   createRoom,
-  exportRoomsSnapshot,
   getRoom,
   joinRoom,
   pinAnswer,
   rejoinRoom,
   removePlayer,
+  requestHint,
+  revealHint,
+  revealTruth,
   setHostPending
 } from "./roomStore";
+import { toPublicRoomState } from "./roomSerializer";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
 import type { RoomRepository } from "./storage/roomRepository";
 
@@ -26,10 +29,6 @@ function emitError(socket: Socket, error: unknown) {
   socket.emit("server:error", {
     message: error instanceof Error ? error.message : "未知错误"
   });
-}
-
-function persistRooms(roomRepository: RoomRepository) {
-  roomRepository.saveAll(exportRoomsSnapshot());
 }
 
 export function getPublishedPuzzleForRoom(puzzleRepository: PuzzleRepository, puzzleId: string): Puzzle {
@@ -48,10 +47,10 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
         const session = createRoom(puzzle, playerName, {
           questionLimit: questionLimit === 0 ? 0 : undefined
         });
-        const { room } = session;
+        const { room, playerId } = session;
         socket.join(room.id);
-        persistRooms(dependencies.roomRepository);
-        socket.emit("room:session", session);
+        dependencies.roomRepository.save(room);
+        socket.emit("room:session", { room: toPublicRoomState(room), playerId });
       } catch (error) {
         emitError(socket, error);
       }
@@ -60,11 +59,11 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
     socket.on("room:join", ({ roomId, playerName }) => {
       try {
         const session = joinRoom(roomId, playerName);
-        const { room } = session;
+        const { room, playerId } = session;
         socket.join(room.id);
-        persistRooms(dependencies.roomRepository);
-        socket.emit("room:session", session);
-        io.to(room.id).emit("room:state", room);
+        dependencies.roomRepository.save(room);
+        socket.emit("room:session", { room: toPublicRoomState(room), playerId });
+        io.to(room.id).emit("room:state", toPublicRoomState(room));
       } catch (error) {
         emitError(socket, error);
       }
@@ -74,7 +73,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
       try {
         const session = rejoinRoom(roomId, playerId);
         socket.join(session.room.id);
-        socket.emit("room:session", session);
+        socket.emit("room:session", { room: toPublicRoomState(session.room), playerId: session.playerId });
       } catch (error) {
         emitError(socket, error);
       }
@@ -85,8 +84,8 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
         addChatMessage(roomId, playerId, body);
         const room = getRoom(roomId);
         if (room) {
-          persistRooms(dependencies.roomRepository);
-          io.to(room.id).emit("room:state", room);
+          dependencies.roomRepository.save(room);
+          io.to(room.id).emit("room:state", toPublicRoomState(room));
         }
       } catch (error) {
         emitError(socket, error);
@@ -98,8 +97,8 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
       try {
         const pendingRoom = setHostPending(roomId, playerId, question, mode === "guess" ? "guess" : "question");
         pendingId = pendingRoom.hostPending?.id;
-        persistRooms(dependencies.roomRepository);
-        io.to(pendingRoom.id).emit("room:state", pendingRoom);
+        dependencies.roomRepository.save(pendingRoom);
+        io.to(pendingRoom.id).emit("room:state", toPublicRoomState(pendingRoom));
 
         const decision = await askHost({
           puzzle: pendingRoom.puzzle,
@@ -111,6 +110,17 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
           mode: pendingRoom.hostPending?.mode ?? "question",
           currentProgress: pendingRoom.progress
         });
+
+        if (isHostErrorDecision(decision)) {
+          clearHostPending(roomId);
+          const updated = getRoom(roomId);
+          if (updated) {
+            dependencies.roomRepository.save(updated);
+            io.to(updated.id).emit("room:state", toPublicRoomState(updated));
+          }
+          socket.emit("server:error", { message: decision.answer });
+          return;
+        }
 
         addHostAnswer(roomId, {
           playerId,
@@ -126,15 +136,15 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
 
         const updated = getRoom(roomId);
         if (updated) {
-          persistRooms(dependencies.roomRepository);
-          io.to(updated.id).emit("room:state", updated);
+          dependencies.roomRepository.save(updated);
+          io.to(updated.id).emit("room:state", toPublicRoomState(updated));
         }
       } catch (error) {
         const room = getRoom(roomId);
         if (room?.hostPending && room.hostPending.id === pendingId) {
           const updated = clearHostPending(roomId);
-          persistRooms(dependencies.roomRepository);
-          io.to(updated.id).emit("room:state", updated);
+          dependencies.roomRepository.save(updated);
+          io.to(updated.id).emit("room:state", toPublicRoomState(updated));
         }
         emitError(socket, error);
       }
@@ -143,8 +153,38 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
     socket.on("case:pin", ({ roomId, answerId }) => {
       try {
         const room = pinAnswer(roomId, answerId);
-        persistRooms(dependencies.roomRepository);
-        io.to(room.id).emit("room:state", room);
+        dependencies.roomRepository.save(room);
+        io.to(room.id).emit("room:state", toPublicRoomState(room));
+      } catch (error) {
+        emitError(socket, error);
+      }
+    });
+
+    socket.on("host:reveal", ({ roomId, playerId }) => {
+      try {
+        const room = revealTruth(roomId, playerId);
+        dependencies.roomRepository.save(room);
+        io.to(room.id).emit("room:state", toPublicRoomState(room));
+      } catch (error) {
+        emitError(socket, error);
+      }
+    });
+
+    socket.on("host:revealHint", ({ roomId, playerId }) => {
+      try {
+        const room = revealHint(roomId, playerId);
+        dependencies.roomRepository.save(room);
+        io.to(room.id).emit("room:state", toPublicRoomState(room));
+      } catch (error) {
+        emitError(socket, error);
+      }
+    });
+
+    socket.on("player:requestHint", ({ roomId, playerId }) => {
+      try {
+        const room = requestHint(roomId, playerId);
+        dependencies.roomRepository.save(room);
+        io.to(room.id).emit("room:state", toPublicRoomState(room));
       } catch (error) {
         emitError(socket, error);
       }
@@ -157,8 +197,8 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
         if (room.players.length === 0) {
           dependencies.roomRepository.remove(roomId);
         } else {
-          persistRooms(dependencies.roomRepository);
-          io.to(room.id).emit("room:state", room);
+          dependencies.roomRepository.save(room);
+          io.to(room.id).emit("room:state", toPublicRoomState(room));
         }
       } catch (error) {
         emitError(socket, error);

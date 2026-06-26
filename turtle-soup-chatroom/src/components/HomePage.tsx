@@ -38,7 +38,7 @@ export function HomePage({
           <h1>知心李歪聊天室</h1>
         </div>
         <div className="top-actions">
-          <span className="status-pill">72 今日活跃</span>
+          <span className="status-pill">{availablePuzzles.length} 题库</span>
           <button className="primary-button" onClick={onRandomPuzzle}>
             <Shuffle size={16} /> 随机一题
           </button>

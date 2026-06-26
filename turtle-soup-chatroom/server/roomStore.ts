@@ -6,7 +6,7 @@ import type {
   Player,
   Puzzle,
   RoomSettlement,
-  RoomSession,
+  RoomStoreSession,
   RoomState
 } from "../src/shared/types";
 import { parseSolutionPointDefinitions } from "./puzzleImporter";
@@ -87,7 +87,10 @@ function normalizeRoom(room: RoomState): RoomState {
     hostPending: normalizeHostPending(room.hostPending),
     progress: room.progress ?? 0,
     answerUnlocked: room.answerUnlocked ?? room.status === "solved",
-    truthRevealed: room.truthRevealed ?? false
+    truthRevealed: room.truthRevealed ?? false,
+    hintsRevealed: room.hintsRevealed ?? 0,
+    hintRequestedBy: room.hintRequestedBy ?? [],
+    revealedHints: room.revealedHints ?? []
   };
 }
 
@@ -107,14 +110,26 @@ function progressFromCoveredPoints(puzzle: Puzzle, coveredPointIds?: string[]) {
   return clampProgress((coveredWeight / totalWeight) * 100);
 }
 
-function calculateSettlement(room: RoomState, unlockingPlayerId?: string): RoomSettlement {
+function calculateSettlement(
+  room: RoomState,
+  unlockingPlayerId?: string,
+  options: { endedBy?: "solved" | "host-reveal"; finalGuess?: string; finalGuessPlayerId?: string; finalGuessResult?: "solved" | "unsolved" } = {}
+): RoomSettlement {
   const mvp = [...room.players].sort((a, b) => b.score - a.score)[0];
   const bestAnswer = [...room.hostLog].sort((a, b) => b.progressDelta - a.progressDelta)[0];
+  const endedBy = options.endedBy ?? "solved";
 
   return {
     mvpPlayerId: mvp?.id,
     bestAnswerId: bestAnswer?.id,
-    unlockingPlayerId: room.settlement?.unlockingPlayerId ?? unlockingPlayerId
+    unlockingPlayerId: room.settlement?.unlockingPlayerId ?? unlockingPlayerId,
+    ...(options.finalGuess ? { finalGuess: options.finalGuess } : {}),
+    ...(options.finalGuessPlayerId ? { finalGuessPlayerId: options.finalGuessPlayerId } : {}),
+    ...(options.finalGuessResult ? { finalGuessResult: options.finalGuessResult } : {}),
+    hintsRevealed: room.hintsRevealed,
+    durationMs: Date.parse(now()) - Date.parse(room.createdAt),
+    endedAt: now(),
+    endedBy
   };
 }
 
@@ -150,7 +165,7 @@ export function createRoom(
   puzzle: Puzzle,
   hostName: string,
   options: { questionLimit?: number } = {}
-): RoomSession {
+): RoomStoreSession {
   const host: Player = {
     id: id("player"),
     name: hostName.trim() || "访客",
@@ -174,6 +189,9 @@ export function createRoom(
     progress: 0,
     answerUnlocked: false,
     truthRevealed: false,
+    hintsRevealed: 0,
+    hintRequestedBy: [],
+    revealedHints: [],
     createdAt: now()
   };
 
@@ -181,7 +199,7 @@ export function createRoom(
   return { room, playerId: host.id };
 }
 
-export function joinRoom(roomId: string, playerName: string): RoomSession {
+export function joinRoom(roomId: string, playerName: string): RoomStoreSession {
   const room = requireRoom(roomId);
   if (room.players.length >= 10) {
     throw new Error("房间已满");
@@ -201,7 +219,7 @@ export function joinRoom(roomId: string, playerName: string): RoomSession {
   return { room, playerId: player.id };
 }
 
-export function rejoinRoom(roomId: string, playerId: string): RoomSession {
+export function rejoinRoom(roomId: string, playerId: string): RoomStoreSession {
   const room = requireRoom(roomId);
   requirePlayer(room, playerId);
   return { room, playerId };
@@ -280,10 +298,16 @@ export function addHostAnswer(
   if (answer.answerType !== "solved" && answer.answerType !== "unsolved") {
     room.questionsUsed += 1;
   }
-  if (answer.answerType === "solved" || room.progress >= ANSWER_UNLOCK_PROGRESS) {
+  if (answer.answerType === "solved") {
     room.answerUnlocked = true;
+    room.truthRevealed = true;
     room.status = "solved";
-    room.settlement = calculateSettlement(room, crossedUnlock ? answer.playerId : undefined);
+    room.settlement = calculateSettlement(room, answer.playerId, {
+      endedBy: "solved",
+      finalGuess: answer.question,
+      finalGuessPlayerId: answer.playerId,
+      finalGuessResult: "solved"
+    });
   }
   return item;
 }
@@ -344,5 +368,60 @@ export function pinAnswer(roomId: string, answerId: string): RoomState {
     createdAt: now()
   };
   room.caseNotes.push(note);
+  return room;
+}
+
+export function revealTruth(roomId: string, playerId: string): RoomState {
+  const room = requireRoom(roomId);
+  const player = requirePlayer(room, playerId);
+  if (!player.isHost) {
+    throw new Error("只有房主可以揭晓");
+  }
+  if (room.status === "solved") {
+    throw new Error("本局已结束");
+  }
+  room.truthRevealed = true;
+  room.answerUnlocked = true;
+  room.status = "solved";
+  room.settlement = calculateSettlement(room, undefined, { endedBy: "host-reveal" });
+  return room;
+}
+
+function getPuzzleHints(puzzle: Puzzle): string[] {
+  if ("hints" in puzzle && Array.isArray((puzzle as { hints?: unknown[] }).hints)) {
+    return (puzzle as { hints: string[] }).hints;
+  }
+  return [];
+}
+
+export function revealHint(roomId: string, playerId: string): RoomState {
+  const room = requireRoom(roomId);
+  const player = requirePlayer(room, playerId);
+  if (!player.isHost) {
+    throw new Error("只有房主可以发放提示");
+  }
+  if (room.status === "solved") {
+    throw new Error("本局已结束");
+  }
+  const hints = getPuzzleHints(room.puzzle);
+  if (room.hintsRevealed >= hints.length) {
+    throw new Error("没有更多提示了");
+  }
+  const nextHint = hints[room.hintsRevealed];
+  room.revealedHints.push(nextHint);
+  room.hintsRevealed += 1;
+  room.hintRequestedBy = [];
+  return room;
+}
+
+export function requestHint(roomId: string, playerId: string): RoomState {
+  const room = requireRoom(roomId);
+  const player = requirePlayer(room, playerId);
+  if (room.status === "solved") {
+    throw new Error("本局已结束");
+  }
+  if (!room.hintRequestedBy.includes(playerId)) {
+    room.hintRequestedBy.push(playerId);
+  }
   return room;
 }
