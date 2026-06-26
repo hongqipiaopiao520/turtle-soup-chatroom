@@ -436,6 +436,25 @@ describe("room UI settlement", () => {
     expect(markup).toContain("发送");
   });
 
+  it("guides players to submit final reasoning when progress is high", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false,
+      progress: 82
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
+    );
+
+    expect(markup).toContain("已经很接近真相了");
+    expect(markup).toContain("推理提交");
+    expect(markup).toContain("解锁汤底");
+  });
+
+
   it("renders unlimited question rooms without a remaining count", () => {
     const room = {
       ...makeSolvedRoom(),

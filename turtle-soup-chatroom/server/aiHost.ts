@@ -208,7 +208,7 @@ export function buildHostPrompt(input: AskHostInput) {
         `主持人角色：${persona.displayName}。性格：${persona.personality}`,
         `角色边界：${persona.rules.join(" ")}`,
         `stylePolicy=${stylePolicy}。styleText 是可选角色风格短句，不参与判题或计分，最多 40 个中文字符。`,
-        "stylePolicy=none 时 styleText 必须为空；optional 时只有自然时才给一句；encouraged 时可以给一句符合角色的短文案。",
+        "stylePolicy=none 时 styleText 必须为空；optional 时只有自然时才给一句；encouraged 时可以给一句符合角色的短文案，适合时可在句末加入 1 个 emoji。",
         "styleText 不得泄露汤底、关键点、新事实，不得攻击玩家本人，不得使用辱骂、歧视、低俗表达。",
         "answer 字段保持规则答案，不要把角色文案放进 answer。",
         "普通提问如果确认关键事实、排除重大误区或命中关键因果，progress 必须高于当前完成度，并填写 coveredPointIds。",

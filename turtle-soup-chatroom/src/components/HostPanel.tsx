@@ -47,7 +47,7 @@ export function HostPanel({
   const isThinking = Boolean(room.hostPending);
   const isDisabled = isThinking || isSolved || (mode === "question" && isQuestionLimitReached);
   const isHost = room.players.find((p) => p.id === playerId)?.isHost ?? false;
-  const isNearTruth = room.progress >= 95 && !isSolved;
+  const isNearTruth = room.progress >= 80 && !isSolved;
   const [confirmReveal, setConfirmReveal] = useState(false);
   const totalHints = room.puzzle.hintCount;
   const hasHints = totalHints > 0;
@@ -145,7 +145,7 @@ export function HostPanel({
       </div>
       {isSolved && <p className="flow-hint">本局已解出，主持人问答已结束。</p>}
       {!isSolved && isNearTruth && (
-        <p className="flow-hint">已接近真相，请提交最终推理来解锁汤底。</p>
+        <p className="flow-hint">已经很接近真相了。把模式切到“推理提交”，用完整推理尝试解锁汤底。</p>
       )}
       {!isSolved && isQuestionLimitReached && mode === "question" && (
         <p className="flow-hint">普通提问次数已用完，可以继续提交完整推理争取解锁汤底。</p>
