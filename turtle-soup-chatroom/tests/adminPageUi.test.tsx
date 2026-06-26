@@ -75,6 +75,8 @@ describe("AdminPage", () => {
     );
 
     expect(markup).toContain("批量发布");
+    expect(markup).toContain("重新分析标签");
+    expect(markup).toContain("删除导入");
     expect(markup).toContain("全选当前列表");
     expect(markup).toContain("清空选择");
     expect(markup).toContain('type="checkbox"');
@@ -88,6 +90,9 @@ describe("AdminPage", () => {
 
     expect(markup).toContain("ui-select");
     expect(markup).toContain("全部状态");
+    expect(markup).toContain("全部难度");
+    expect(markup).toContain("全部标签");
+    expect(markup).toContain("筛选标题、汤面、来源、标签");
     expect(markup).toContain("中等");
     expect(markup).not.toContain("<select");
   });

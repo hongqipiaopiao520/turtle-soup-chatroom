@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Socket } from "socket.io-client";
-import type { PublicPuzzle, PublicRoomState, RoomSession } from "../shared/types";
+import type { HostPersonaId, PublicPuzzle, PublicRoomState, RoomSession } from "../shared/types";
 import { createSocket } from "./socket";
 
 export function useRoomSocket() {
@@ -43,8 +43,8 @@ export function useRoomSocket() {
     playerId,
     error,
     isChatPending,
-    createRoom(puzzle: Pick<PublicPuzzle, "id">, playerName: string, options?: { questionLimit?: number }) {
-      socket.emit("room:create", { puzzleId: puzzle.id, playerName, questionLimit: options?.questionLimit });
+    createRoom(puzzle: Pick<PublicPuzzle, "id">, playerName: string, options?: { questionLimit?: number; hostPersonaId?: HostPersonaId }) {
+      socket.emit("room:create", { puzzleId: puzzle.id, playerName, questionLimit: options?.questionLimit, hostPersonaId: options?.hostPersonaId });
     },
     joinRoom(roomId: string, playerName: string) {
       socket.emit("room:join", { roomId, playerName });

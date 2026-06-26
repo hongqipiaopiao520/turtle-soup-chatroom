@@ -8,6 +8,7 @@ import type { PublicRoomState } from "../src/shared/types";
 function makeSolvedRoom(): PublicRoomState {
   return {
     id: "room-ui-test",
+    hostPersonaId: "xiaowai",
     puzzle: {
       id: "puzzle-ui-test",
       title: "雨夜站台",
@@ -79,7 +80,6 @@ describe("room UI settlement", () => {
       <SidePanel
         room={room}
         playerId="player-host"
-        onOpenSettlement={() => undefined}
         onSendChat={() => undefined}
       />
     );
@@ -120,6 +120,36 @@ describe("room UI settlement", () => {
     expect(markup).toContain("关键回复");
     expect(markup).toContain("最绕远提问");
     expect(markup).toContain("settlement-awards");
+  });
+
+  it("places the settlement action beside the invite action in the room topbar", () => {
+    const room = makeSolvedRoom();
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { origin: "http://localhost:5173" }, setTimeout: () => 0 }
+    });
+
+    const markup = renderToStaticMarkup(
+      <RoomPage
+        room={room}
+        playerId="player-host"
+        onBack={() => undefined}
+        onAsk={() => undefined}
+        onPin={() => undefined}
+        onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+
+    expect(markup).toContain('class="room-actions"');
+    expect(markup.indexOf("查看结算")).toBeLessThan(markup.indexOf("邀请好友"));
+    expect(markup.indexOf("查看结算")).toBeLessThan(markup.indexOf('class="room-grid"'));
   });
 
   it("selects the most off-track zero-progress guess instead of the first zero-score question", () => {
@@ -239,8 +269,8 @@ describe("room UI settlement", () => {
     });
 
     expect(markup).toContain("room-title-meta");
-    expect(markup).toContain("room-code-pill");
-    expect(markup).toMatch(/room-title-meta[\s\S]*私人房间[\s\S]*汤底已解锁[\s\S]*room-ui-test/);
+    expect(markup).not.toContain("room-code-pill");
+    expect(markup).toMatch(/room-title-meta[\s\S]*私人房间[\s\S]*汤底已解锁/);
   });
 
   it("places answer actions in the top-right corner of each answer card", () => {
@@ -269,7 +299,6 @@ describe("room UI settlement", () => {
       <SidePanel
         room={room}
         playerId="player-host"
-        onOpenSettlement={() => undefined}
         onSendChat={() => undefined}
       />
     );
@@ -286,7 +315,6 @@ describe("room UI settlement", () => {
       <SidePanel
         room={room}
         playerId="player-host"
-        onOpenSettlement={() => undefined}
         onSendChat={() => undefined}
         isChatPending
       />
@@ -300,7 +328,6 @@ describe("room UI settlement", () => {
       <SidePanel
         room={makeSolvedRoom()}
         playerId="player-host"
-        onOpenSettlement={() => undefined}
         onSendChat={() => undefined}
       />
     );
@@ -309,7 +336,7 @@ describe("room UI settlement", () => {
     expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("贡献榜"));
   });
 
-  it("keeps the settlement action above a long contribution list", () => {
+  it("keeps the contribution list focused on scores when it grows", () => {
     const room = {
       ...makeSolvedRoom(),
       players: Array.from({ length: 9 }, (_, index) => ({
@@ -327,13 +354,12 @@ describe("room UI settlement", () => {
       <SidePanel
         room={room}
         playerId="player-0"
-        onOpenSettlement={() => undefined}
         onSendChat={() => undefined}
       />
     );
 
     expect(markup).toContain("score-section side-compact-section");
-    expect(markup.indexOf("查看结算")).toBeLessThan(markup.indexOf('class="score-list"'));
+    expect(markup).not.toContain("查看结算");
   });
 
   it("groups compact side summaries so long player lists cannot cover chat or notes", () => {
@@ -354,7 +380,6 @@ describe("room UI settlement", () => {
       <SidePanel
         room={room}
         playerId="player-0"
-        onOpenSettlement={() => undefined}
         onSendChat={() => undefined}
       />
     );
@@ -456,6 +481,49 @@ describe("room UI settlement", () => {
     expect(markup).not.toContain("<select");
   });
 
+  it("groups host-only controls above the question composer", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false,
+      puzzle: {
+        ...makeSolvedRoom().puzzle,
+        hintCount: 3
+      }
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
+    );
+
+    expect(markup).toContain("host-composer");
+    expect(markup).toContain("host-tools");
+    expect(markup.indexOf("host-composer")).toBeLessThan(markup.indexOf("host-tools"));
+    expect(markup.indexOf("host-tools")).toBeLessThan(markup.indexOf("ask-box"));
+    expect(markup.indexOf('aria-label="房主揭晓"')).toBeLessThan(markup.indexOf('aria-label="发放提示 (0/3)"'));
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).toContain("host-tool-button");
+    expect(markup).toContain("host-tool-count");
+  });
+
+  it("keeps the hint tool visible as disabled when a puzzle has no hints", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
+    );
+
+    expect(markup).toContain('aria-label="暂无提示"');
+    expect(markup).toContain("disabled");
+    expect(markup.indexOf('aria-label="房主揭晓"')).toBeLessThan(markup.indexOf('aria-label="暂无提示"'));
+  });
+
   it("renders a distinctive host badge for the room owner", () => {
     const room = makeSolvedRoom();
 
@@ -463,7 +531,6 @@ describe("room UI settlement", () => {
       <SidePanel
         room={room}
         playerId="player-host"
-        onOpenSettlement={() => undefined}
         onSendChat={() => undefined}
       />
     );

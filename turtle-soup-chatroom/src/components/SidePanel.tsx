@@ -5,13 +5,11 @@ import type { PublicRoomState } from "../shared/types";
 export function SidePanel({
   room,
   playerId,
-  onOpenSettlement,
   onSendChat,
   isChatPending = false
 }: {
   room: PublicRoomState;
   playerId: string;
-  onOpenSettlement: () => void;
   onSendChat: (body: string) => void;
   isChatPending?: boolean;
 }) {
@@ -104,11 +102,6 @@ export function SidePanel({
             <h2>
               <Award size={17} /> 贡献榜
             </h2>
-            {room.answerUnlocked && (
-              <button className="settlement-button" onClick={onOpenSettlement}>
-                查看结算
-              </button>
-            )}
           </div>
           <div className="score-list">
             {rankedPlayers.map((player) => (

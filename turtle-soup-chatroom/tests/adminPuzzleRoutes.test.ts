@@ -4,12 +4,14 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { seedPuzzles } from "../src/data/seedPuzzles";
 import {
+  deleteAdminPuzzle,
   importTextDraft,
   importBatchWithAi,
   importTextWithAi,
   isAdminRequestAuthorized,
   listAdminPuzzles,
   publishAdminPuzzle,
+  reanalyzePuzzleTags,
   rejectAdminPuzzle,
   updateAdminPuzzle
 } from "../server/adminPuzzleRoutes";
@@ -177,6 +179,18 @@ describe("admin puzzle helpers", () => {
     db.close();
   });
 
+  it("deletes imported managed puzzles", () => {
+    const { db, repository } = makeRepository();
+    const draft = importTextDraft(repository, { rawText: "待删题\n汤面" });
+
+    const deleted = deleteAdminPuzzle(repository, draft.id);
+
+    expect(deleted.id).toBe(draft.id);
+    expect(repository.findById(draft.id)).toBeUndefined();
+    expect(listAdminPuzzles(repository)).toHaveLength(0);
+    db.close();
+  });
+
   it("updates editable puzzle fields without changing status", () => {
     const { db, repository } = makeRepository();
     const draft = importTextDraft(repository, { rawText: "旧标题\n旧汤面" });
@@ -202,6 +216,57 @@ describe("admin puzzle helpers", () => {
     expect(updated.solutionPoints).toEqual(["关键点一", "关键点二"]);
     expect(updated.tags).toEqual(["本格", "测试"]);
     expect(updated.updatedAt).not.toBe(draft.updatedAt);
+    db.close();
+  });
+
+  it("reanalyzes safe taxonomy tags for selected historical puzzles with AI", async () => {
+    process.env.AI_BASE_URL = "https://example.test";
+    process.env.AI_API_KEY = "test-key";
+    process.env.AI_MODEL = "test-model";
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content: JSON.stringify({
+          worldview: "变格",
+          soupColor: "红汤",
+          roleType: "全人类",
+          difficultyTag: "高难",
+          tags: ["变格", "红汤", "全人类", "高难"]
+        }) } }]
+      })
+    } as unknown as Response);
+    const { db, repository } = makeRepository();
+    const puzzle = importTextDraft(repository, {
+      rawText: [
+        "标题：保姆",
+        "汤面：保姆一周没来，我发现家里好像有人。",
+        "汤底：叙述者梦游时杀死保姆，并把尸体藏在水箱里。"
+      ].join("\n")
+    });
+    repository.updateManaged(puzzle.id, {
+      title: "保姆",
+      surface: "保姆一周没来，我发现家里好像有人。",
+      truth: "叙述者梦游时杀死保姆，并把尸体藏在水箱里。",
+      solutionPoints: ["叙述者梦游", "保姆死亡", "尸体在水箱"],
+      hints: [],
+      difficulty: "hard",
+      tags: ["保姆死亡", "尸体水箱", "心理诡计"],
+      qualityScore: 80,
+      qualityIssues: [],
+      qualitySummary: "旧数据"
+    });
+
+    const result = await reanalyzePuzzleTags(repository, { ids: [puzzle.id] });
+
+    expect(result.updated).toHaveLength(1);
+    expect(result.updated[0].tags).toEqual(["变格", "红汤", "全人类", "高难"]);
+    expect(result.updated[0].tags).not.toContain("保姆死亡");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://example.test/chat/completions",
+      expect.objectContaining({
+        body: expect.stringContaining("海龟汤题库标签编辑")
+      })
+    );
     db.close();
   });
 });

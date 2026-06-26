@@ -13,7 +13,7 @@ import { HomePage } from "./components/HomePage";
 import { PuzzleDetail } from "./components/PuzzleDetail";
 import { RoomPage } from "./components/RoomPage";
 import { publicSeedPuzzles } from "./data/seedPuzzles";
-import type { PublicPuzzle } from "./shared/types";
+import type { HostPersonaId, PublicPuzzle } from "./shared/types";
 
 type View =
   | { name: "home" }
@@ -23,6 +23,12 @@ type View =
 type NameRequest =
   | { kind: "create"; puzzle: PublicPuzzle; unlimitedQuestions: boolean }
   | { kind: "join"; roomId: string };
+
+const hostPersonaOptions: { id: HostPersonaId; name: string }[] = [
+  { id: "xiaowai", name: "小歪" },
+  { id: "dav", name: "大V" },
+  { id: "guigui", name: "龟龟" }
+];
 
 export function App() {
   if (typeof window !== "undefined" && window.location.pathname === "/admin") {
@@ -116,14 +122,15 @@ function PlayerApp() {
     setNameRequest({ kind: "create", puzzle, unlimitedQuestions: false });
   }
 
-  function submitName(playerName: string, options: { unlimitedQuestions?: boolean } = {}) {
+  function submitName(playerName: string, options: { unlimitedQuestions?: boolean; hostPersonaId?: HostPersonaId } = {}) {
     const trimmedName = playerName.trim() || "访客";
     if (!nameRequest) return;
 
     if (nameRequest.kind === "create") {
       setPendingPuzzle(nameRequest.puzzle);
       roomSocket.createRoom(nameRequest.puzzle, trimmedName, {
-        questionLimit: options.unlimitedQuestions ? 0 : undefined
+        questionLimit: options.unlimitedQuestions ? 0 : undefined,
+        hostPersonaId: options.hostPersonaId
       });
     } else {
       roomSocket.joinRoom(nameRequest.roomId, trimmedName);
@@ -194,12 +201,13 @@ function NameDialog({
 }: {
   request: NameRequest;
   onCancel: () => void;
-  onSubmit: (playerName: string, options?: { unlimitedQuestions?: boolean }) => void;
+  onSubmit: (playerName: string, options?: { unlimitedQuestions?: boolean; hostPersonaId?: HostPersonaId }) => void;
 }) {
   const [name, setName] = useState("");
   const [unlimitedQuestions, setUnlimitedQuestions] = useState(
     request.kind === "create" ? request.unlimitedQuestions : false
   );
+  const [hostPersonaId, setHostPersonaId] = useState<HostPersonaId>("xiaowai");
   const actionLabel = request.kind === "create" ? "创建房间" : "加入房间";
 
   return (
@@ -208,7 +216,7 @@ function NameDialog({
         className="name-dialog"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit(name, { unlimitedQuestions });
+          onSubmit(name, { unlimitedQuestions, hostPersonaId });
         }}
       >
         <h2>输入昵称</h2>
@@ -217,14 +225,31 @@ function NameDialog({
           <input autoFocus value={name} onChange={(event) => setName(event.target.value)} maxLength={18} placeholder="访客" />
         </label>
         {request.kind === "create" && (
-          <label className="name-dialog-check">
-            <input
-              type="checkbox"
-              checked={unlimitedQuestions}
-              onChange={(event) => setUnlimitedQuestions(event.target.checked)}
-            />
-            普通提问不限次数
-          </label>
+          <>
+            <fieldset className="name-dialog-personas">
+              <legend>主持人</legend>
+              {hostPersonaOptions.map((persona) => (
+                <label key={persona.id}>
+                  <input
+                    type="radio"
+                    name="hostPersonaId"
+                    value={persona.id}
+                    checked={hostPersonaId === persona.id}
+                    onChange={() => setHostPersonaId(persona.id)}
+                  />
+                  {persona.name}
+                </label>
+              ))}
+            </fieldset>
+            <label className="name-dialog-check">
+              <input
+                type="checkbox"
+                checked={unlimitedQuestions}
+                onChange={(event) => setUnlimitedQuestions(event.target.checked)}
+              />
+              普通提问不限次数
+            </label>
+          </>
         )}
         <div className="dialog-actions">
           <button className="ghost-button" type="button" onClick={onCancel}>

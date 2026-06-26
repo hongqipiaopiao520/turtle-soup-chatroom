@@ -25,6 +25,25 @@ describe("roomStore", () => {
     expect(room.players[0]).toMatchObject({ name: "阿汤", isHost: true });
     expect(playerId).toBe(room.players[0].id);
     expect(room.questionLimit).toBe(20);
+    expect(room.hostPersonaId).toBe("xiaowai");
+  });
+
+  it("normalizes host persona ids when creating and importing rooms", () => {
+    const guiguiSession = createRoom(seedPuzzles[0], "房主", { hostPersonaId: "guigui" });
+    const fallbackSession = createRoom(seedPuzzles[0], "房主", { hostPersonaId: "unknown" });
+
+    expect(guiguiSession.room.hostPersonaId).toBe("guigui");
+    expect(fallbackSession.room.hostPersonaId).toBe("xiaowai");
+
+    importRoomsSnapshot([
+      {
+        ...guiguiSession.room,
+        id: "legacy-room",
+        hostPersonaId: undefined
+      } as unknown as typeof guiguiSession.room
+    ]);
+
+    expect(getRoom("legacy-room")?.hostPersonaId).toBe("xiaowai");
   });
 
   it("creates a room with unlimited ordinary questions", () => {

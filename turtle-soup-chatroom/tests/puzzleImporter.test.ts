@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildImportPrompt, createFallbackDraft, createImportFingerprintId, importPuzzleFromText, parsePuzzleImportResponse } from "../server/puzzleImporter";
+import { inferPuzzleTagsFromText, normalizePuzzleTags } from "../server/puzzleTags";
 
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
@@ -14,6 +15,34 @@ afterEach(() => {
   vi.restoreAllMocks();
   process.env = { ...originalEnv };
   globalThis.fetch = originalFetch;
+});
+
+describe("puzzle tag taxonomy", () => {
+  it("normalizes public tags into stable non-spoilery taxonomy order", () => {
+    expect(normalizePuzzleTags({
+      tags: ["尸体替换", "本格", "犯罪悬疑", "高难", "硬核逻辑", "有死人", "全人类", "黑汤"],
+      difficulty: "hard",
+      surface: "男人回家后发现父亲不对劲。",
+      truth: "父亲已经被替换，尸体被藏起来。"
+    })).toEqual(["本格", "红汤", "全人类", "高难"]);
+  });
+
+  it("infers safe public tags from puzzle text", () => {
+    expect(inferPuzzleTagsFromText({
+      difficulty: "medium",
+      surface: "男人喝了一口冷水后立刻报警。",
+      truth: "水原本是热的，说明有人进入房间并动过杯中液体。"
+    })).toEqual(["本格", "清汤", "全人类", "中级"]);
+  });
+
+  it("uses explicit AI tag fields instead of regex-overriding valid labels", () => {
+    expect(normalizePuzzleTags({
+      tags: ["变格", "清汤", "含非人", "入门"],
+      difficulty: "easy",
+      surface: "房间里传来鬼的声音。",
+      truth: "真正说话的是幽灵。"
+    })).toEqual(["变格", "清汤", "含非人", "入门"]);
+  });
 });
 
 describe("parsePuzzleImportResponse", () => {
@@ -35,6 +64,12 @@ describe("parsePuzzleImportResponse", () => {
       solutionPoints: ["告别仪式", "录音"],
       hints: ["关注声音来源"],
       difficulty: "medium",
+      tagAnalysis: {
+        worldview: "本格",
+        soupColor: "清汤",
+        roleType: "全人类",
+        difficultyTag: "中级"
+      },
       tags: ["悬疑", "温情"],
       qualityScore: 86,
       qualityIssues: ["汤底还可以补细节"],
@@ -49,7 +84,33 @@ describe("parsePuzzleImportResponse", () => {
       solutionPoints: ["50|point-1|告别仪式", "50|point-2|录音"],
       qualityScore: 86
     });
+    expect(result.tags).toEqual(["本格", "清汤", "全人类", "中级"]);
     expect(result.publishedAt).toBeTruthy();
+  });
+
+  it("keeps concrete answer facts out of imported public tags", () => {
+    const result = parsePuzzleImportResponse(JSON.stringify({
+      title: "保姆",
+      surface: "保姆一周没来，我发现家里好像有人。",
+      truth: "叙述者梦游时杀死保姆，并把尸体藏在水箱里。",
+      solutionPoints: ["叙述者梦游", "保姆死亡", "尸体在水箱"],
+      hints: ["注意叙述者状态"],
+      difficulty: "hard",
+      tagAnalysis: {
+        worldview: "变格",
+        soupColor: "红汤",
+        roleType: "全人类",
+        difficultyTag: "高难"
+      },
+      tags: ["本格", "保姆死亡", "尸体水箱", "心理诡计", "黑汤"],
+      qualityScore: 82,
+      qualityIssues: [],
+      qualitySummary: "结构完整"
+    }));
+
+    expect(result.tags).toEqual(["变格", "红汤", "全人类", "高难"]);
+    expect(result.tags).not.toContain("保姆死亡");
+    expect(result.tags).not.toContain("尸体水箱");
   });
 
   it("normalizes imported solution points into weighted non-duplicative facts", () => {
@@ -85,6 +146,12 @@ describe("parsePuzzleImportResponse", () => {
         关键点: ["车票不是交通票", "使用荧光油墨", "关灯后线索显现"],
         提示: ["注意光线"],
         难度: "简单",
+        标签分析: {
+          世界观: "本格",
+          汤色: "清汤",
+          角色类型: "全人类",
+          难度标签: "入门"
+        },
         标签: "本格, 入门",
         质量评分: "86",
         质量问题: "无",
@@ -98,10 +165,10 @@ describe("parsePuzzleImportResponse", () => {
       surface: "一个人看见空白车票后立刻把灯关掉。",
       truth: "车票是密室逃脱提示卡，荧光油墨需要关灯才会显现。",
       difficulty: "easy",
-      tags: ["本格", "入门"],
       qualityScore: 86,
       qualityIssues: []
     });
+    expect(result.tags).toEqual(["本格", "清汤", "全人类", "入门"]);
   });
 
   it("replaces AI semantic English point ids with neutral numbered ids", () => {
@@ -143,6 +210,12 @@ describe("importPuzzleFromText", () => {
           solutionPoints: ["水本来是热的", "有人进房"],
           hints: ["留意水温变化"],
           difficulty: "easy",
+          tagAnalysis: {
+            worldview: "本格",
+            soupColor: "清汤",
+            roleType: "全人类",
+            difficultyTag: "入门"
+          },
           tags: ["本格"],
           qualityScore: 91,
           qualityIssues: [],
@@ -156,6 +229,7 @@ describe("importPuzzleFromText", () => {
     expect(result.puzzle.status).toBe("published");
     expect(result.puzzle.publishedAt).toBeTruthy();
     expect(result.puzzle.title).toBe("冷掉的水");
+    expect(result.puzzle.tags).toEqual(["本格", "清汤", "全人类", "入门"]);
     expect(result.puzzle.solutionPoints).toEqual([
       "50|water-state|杯中液体状态异常|水变冷,原本是热水",
       "50|intrusion|有人进入房间|有人来过,有人进屋"
@@ -235,6 +309,11 @@ describe("buildImportPrompt", () => {
     expect(systemPrompt).toContain("可验证");
     expect(systemPrompt).toContain("关键因果");
     expect(systemPrompt).toContain("不要把同一个事实拆成多个重复点");
+    expect(systemPrompt).toContain("tags 是公开给玩家看的筛选标签");
+    expect(systemPrompt).toContain("tagAnalysis 是公开标签的逐字段判断");
+    expect(systemPrompt).toContain("必须基于汤底判断标签");
+    expect(systemPrompt).toContain("父亲被替换");
+    expect(systemPrompt).toContain("solutionPoints");
   });
 });
 

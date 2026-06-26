@@ -52,7 +52,7 @@ describe("parseHostResponse", () => {
   it("falls back to partial for non-json model output", () => {
     const result = parseHostResponse("也许有关，但不能直接确认。");
     expect(result.answerType).toBe("partial");
-    expect(result.answer).toContain("也许有关");
+    expect(result.answer).toBe("部分相关");
     expect(result.progress).toBe(0);
   });
 
@@ -92,6 +92,55 @@ describe("parseHostResponse", () => {
       progress: 50,
       coveredPointIds: ["intrusion", "liquid-tampered"],
       coverageConfidence: 0.82
+    });
+  });
+
+  it("parses safe styleText when style policy allows persona flavor", () => {
+    const result = parseHostResponse(
+      '{"answerType":"yes","answer":"是。","styleText":"方向歪得不算离谱。","progress":35}',
+      { puzzle: askHostInput.puzzle, stylePolicy: "optional" }
+    );
+
+    expect(result).toEqual({
+      answerType: "yes",
+      answer: "是",
+      styleText: "方向歪得不算离谱。",
+      progress: 35
+    });
+  });
+
+  it("drops unsafe or disallowed styleText without changing the answer", () => {
+    expect(
+      parseHostResponse(
+        '{"answerType":"yes","answer":"是。","styleText":"汤让他想起了过去的事故。","progress":35}',
+        { puzzle: askHostInput.puzzle, stylePolicy: "optional" }
+      )
+    ).toEqual({
+      answerType: "yes",
+      answer: "是",
+      progress: 35
+    });
+
+    expect(
+      parseHostResponse(
+        '{"answerType":"no","answer":"不是。","styleText":"别乱猜了傻逼。","progress":10}',
+        { puzzle: askHostInput.puzzle, stylePolicy: "optional" }
+      )
+    ).toEqual({
+      answerType: "no",
+      answer: "不是",
+      progress: 10
+    });
+
+    expect(
+      parseHostResponse(
+        '{"answerType":"partial","answer":"部分相关。","styleText":"龟龟觉得你快到了。","progress":80}',
+        { puzzle: askHostInput.puzzle, stylePolicy: "none" }
+      )
+    ).toEqual({
+      answerType: "partial",
+      answer: "部分相关",
+      progress: 80
     });
   });
 });
@@ -214,6 +263,25 @@ describe("buildHostPrompt", () => {
     expect(systemPrompt).toContain("普通提问如果确认关键事实");
     expect(systemPrompt).toContain("progress 必须高于当前完成度");
     expect(userPrompt).toContain("当前完成度：20");
+  });
+
+  it("includes selected persona and stylePolicy rules in the prompt", () => {
+    const messages = buildHostPrompt({
+      ...askHostInput,
+      hostPersonaId: "dav",
+      stylePolicy: "encouraged"
+    });
+    const systemPrompt = messages[0].content;
+    const userPrompt = messages[1].content;
+
+    expect(systemPrompt).toContain("主持人角色：大V");
+    expect(systemPrompt).toContain("毒舌侦探型");
+    expect(systemPrompt).toContain("只能吐槽问题、推理方向或脑洞");
+    expect(systemPrompt).toContain("stylePolicy=encouraged");
+    expect(systemPrompt).toContain("styleText 不得泄露汤底");
+    expect(systemPrompt).toContain("answer 字段保持规则答案");
+    expect(userPrompt).toContain("主持人：大V(dav)");
+    expect(userPrompt).toContain("stylePolicy：encouraged");
   });
 });
 

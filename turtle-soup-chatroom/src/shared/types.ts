@@ -2,6 +2,8 @@ export type Difficulty = "easy" | "medium" | "hard";
 
 export type RoomStatus = "waiting" | "playing" | "solved" | "closed";
 
+export type HostPersonaId = "xiaowai" | "dav" | "guigui";
+
 export type HostAnswerType =
   | "yes"
   | "no"
@@ -79,6 +81,7 @@ export interface HostAnswer {
   question: string;
   answerType: HostAnswerType;
   answer: string;
+  styleText?: string;
   progress: number;
   progressDelta: number;
   contributionScore: number;
@@ -118,6 +121,7 @@ export interface CaseNote {
 export interface RoomState {
   id: string;
   puzzle: Puzzle;
+  hostPersonaId: HostPersonaId;
   status: RoomStatus;
   players: Player[];
   hostLog: HostAnswer[];
@@ -139,6 +143,7 @@ export interface RoomState {
 export interface PublicRoomState {
   id: string;
   puzzle: PublicPuzzle;
+  hostPersonaId: HostPersonaId;
   status: RoomStatus;
   players: Player[];
   hostLog: PublicHostAnswer[];

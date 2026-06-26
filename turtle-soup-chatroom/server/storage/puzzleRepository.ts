@@ -49,6 +49,8 @@ export interface PuzzleRepository {
   listManaged(status?: PuzzleStatus): ManagedPuzzle[];
   upsertManaged(puzzle: ManagedPuzzle): ManagedPuzzle;
   updateManaged(id: string, input: ManagedPuzzleUpdate): ManagedPuzzle;
+  updateTags(id: string, tags: string[]): ManagedPuzzle;
+  deleteManaged(id: string): ManagedPuzzle;
   publish(id: string): ManagedPuzzle;
   reject(id: string): ManagedPuzzle;
 }
@@ -127,6 +129,7 @@ export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
   const selectPublished = db.prepare("select * from puzzles where status = 'published' order by created_at desc, id asc");
   const selectManaged = db.prepare("select * from puzzles order by updated_at desc, id asc");
   const selectManagedByStatus = db.prepare("select * from puzzles where status = ? order by updated_at desc, id asc");
+  const deleteById = db.prepare("delete from puzzles where id = ?");
   const upsert = db.prepare(`
     insert into puzzles (
       id,
@@ -262,6 +265,19 @@ export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
         qualitySummary: input.qualitySummary,
         updatedAt: nextTimestampAfter(existing.updatedAt)
       });
+    },
+    updateTags(id: string, tags: string[]) {
+      const existing = requirePuzzle(findById(id), id);
+      return this.upsertManaged({
+        ...existing,
+        tags,
+        updatedAt: nextTimestampAfter(existing.updatedAt)
+      });
+    },
+    deleteManaged(id: string) {
+      const existing = requirePuzzle(findById(id), id);
+      deleteById.run(id);
+      return existing;
     },
     publish(id: string) {
       const now = new Date().toISOString();

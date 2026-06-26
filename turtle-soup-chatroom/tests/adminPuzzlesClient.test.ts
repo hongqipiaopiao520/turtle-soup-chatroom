@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  deleteAdminPuzzle,
+  deleteAdminPuzzleBatch,
   fetchAdminPuzzles,
   importAdminPuzzleText,
   parseAdminPuzzleImages,
   publishAdminPuzzleBatch,
   publishAdminPuzzle,
+  reanalyzeAdminPuzzleTags,
   rejectAdminPuzzle,
   updateAdminPuzzle
 } from "../src/client/adminPuzzles";
@@ -133,6 +136,42 @@ describe("admin puzzle client", () => {
     expect(fetcher).toHaveBeenNthCalledWith(2, "/api/admin/puzzles/puzzle-2/publish", {
       method: "POST",
       headers: { Authorization: "Bearer secret" }
+    });
+  });
+
+  it("deletes managed puzzles and reports row-level failures", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: "puzzle-1", title: "已删" }))
+      .mockResolvedValueOnce(jsonResponse({ message: "题目不存在" }, { ok: false, status: 404 }));
+
+    await deleteAdminPuzzle("puzzle-1", { token: "secret", fetcher: fetcher as unknown as typeof fetch });
+    const result = await deleteAdminPuzzleBatch(["puzzle-2"], {
+      token: "secret",
+      fetcher: fetcher as unknown as typeof fetch
+    });
+
+    expect(result.deleted).toEqual([]);
+    expect(result.failed).toEqual([{ id: "puzzle-2", message: "题目不存在" }]);
+    expect(fetcher).toHaveBeenNthCalledWith(1, "/api/admin/puzzles/puzzle-1", {
+      method: "DELETE",
+      headers: { Authorization: "Bearer secret" }
+    });
+    expect(fetcher).toHaveBeenNthCalledWith(2, "/api/admin/puzzles/puzzle-2", {
+      method: "DELETE",
+      headers: { Authorization: "Bearer secret" }
+    });
+  });
+
+  it("requests tag reanalysis for selected puzzles", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ updated: [], unchanged: ["p1"] }));
+
+    await reanalyzeAdminPuzzleTags({ ids: ["p1"] }, { fetcher: fetcher as unknown as typeof fetch });
+
+    expect(fetcher).toHaveBeenCalledWith("/api/admin/puzzles/reanalyze-tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: ["p1"] })
     });
   });
 

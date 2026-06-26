@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import type { Difficulty, ManagedPuzzle, PuzzleStatus, SolutionPointDefinition } from "../src/shared/types";
 import { getAiHostConfig } from "./aiHost";
+import { normalizePuzzleTags } from "./puzzleTags";
 
 const PuzzleImportSchema = z.object({
   title: z.string().min(1).max(80),
@@ -226,6 +227,16 @@ function normalizeSolutionPoints(value: unknown) {
   return [];
 }
 
+function normalizeTagFields(value: unknown) {
+  if (!isRecord(value)) return [];
+  return [
+    textOrUndefined(readField(value, ["worldview", "world", "世界观"])),
+    textOrUndefined(readField(value, ["soupColor", "tone", "汤色"])),
+    textOrUndefined(readField(value, ["roleType", "roles", "角色类型"])),
+    textOrUndefined(readField(value, ["difficultyTag", "difficulty", "难度标签"]))
+  ].filter((tag): tag is string => Boolean(tag));
+}
+
 function normalizeImportPayload(value: unknown): PuzzleImportPayload {
   const payload = unwrapImportPayload(value);
   if (!isRecord(payload)) {
@@ -259,7 +270,10 @@ function normalizeImportPayload(value: unknown): PuzzleImportPayload {
     ])),
     hints: stringList(readField(payload, ["hints", "hint", "提示", "线索提示"]), { splitCommas: true, limit: 10 }),
     difficulty: normalizeDifficultyValue(readField(payload, ["difficulty", "难度"])),
-    tags: stringList(readField(payload, ["tags", "tag", "标签", "分类"]), { splitCommas: true, limit: 10 }),
+    tags: [
+      ...normalizeTagFields(readField(payload, ["tagAnalysis", "tagsAnalysis", "标签分析"])),
+      ...stringList(readField(payload, ["tags", "tag", "标签", "分类"]), { splitCommas: true, limit: 10 })
+    ],
     qualityScore: numberOrDefault(readField(payload, ["qualityScore", "score", "质量评分", "评分"]), 0),
     qualityIssues: stringList(readField(payload, ["qualityIssues", "issues", "质量问题", "问题"]), {
       splitCommas: true,
@@ -508,7 +522,12 @@ function createManagedPuzzle(input: {
       solutionPoints: input.solutionPoints
     }),
     difficulty: input.difficulty,
-    tags: input.tags,
+    tags: normalizePuzzleTags({
+      tags: input.tags,
+      difficulty: input.difficulty,
+      surface: input.surface,
+      truth: input.truth
+    }),
     author: "题库导入",
     rating: 0,
     plays: 0,
@@ -584,7 +603,7 @@ export function buildImportPrompt(rawText: string) {
         "你是海龟汤题库编辑。",
         "请把用户提供的原始题目整理成适合线上多人推理的结构化题目。",
         "不要输出 Markdown，只输出 JSON。",
-        "必须使用英文键名：title, surface, truth, solutionPoints, hints, difficulty, tags, qualityScore, qualityIssues, qualitySummary。",
+        "必须使用英文键名：title, surface, truth, solutionPoints, hints, difficulty, tagAnalysis, tags, qualityScore, qualityIssues, qualitySummary。",
         "difficulty 只能是 easy、medium、hard。",
         "solutionPoints 必须是 3 到 8 个不重复的原子事实，作为后续 AI 主持评分依据。",
         "每个 solutionPoint 都必须独立、可验证，并覆盖汤底的关键因果、核心诡计或必要身份关系。",
@@ -592,8 +611,13 @@ export function buildImportPrompt(rawText: string) {
         "solutionPoints 优先输出字符串格式：权重|point-编号|中文关键事实|中文同义说法1,中文同义说法2；所有权重加总建议为 100。",
         "不要使用英文语义 id，例如 mental_illness；id 用 point-1、point-2 这种编号即可。",
         "tags、hints、qualityIssues 必须是字符串数组；qualityScore 必须是数字。",
+        "tagAnalysis 是公开标签的逐字段判断，格式为 {\"worldview\":\"本格|变格\",\"soupColor\":\"清汤|红汤\",\"roleType\":\"全人类|含非人\",\"difficultyTag\":\"入门|中级|高难\"}。",
+        "tags 是公开给玩家看的筛选标签，必须按 tagAnalysis 的 worldview、soupColor、roleType、difficultyTag 顺序复制为 4 项数组。",
+        "禁止写会剧透汤底的具体事实、角色真相、凶手身份、尸体位置、道具答案。不要输出黑汤。",
+        "必须基于汤底判断标签，不要只看汤面。鬼、幽灵、怪物、人偶、机器人、动物角色 => 含非人；人格分裂、梦游、幻觉、精神疾病 => 变格，但仍然是全人类。",
+        "例如不要把“父亲被替换”“尸体在水箱”“水被换过”“凶手是保安”写成标签，这些只能放进 solutionPoints。",
         "不要把同一个事实拆成多个重复点，例如“水原本是热的”和“水变冷”应合并为一个液体状态异常点。",
-        "输出示例：{\"title\":\"冷掉的水\",\"surface\":\"男人喝了一口冷水后报警。\",\"truth\":\"水本来是热的，说明有人进过房间。\",\"solutionPoints\":[\"50|point-1|杯中液体状态异常|水变冷,原本是热水\",\"50|point-2|有人进入房间|有人来过,有人进屋\"],\"hints\":[\"注意水温\"],\"difficulty\":\"easy\",\"tags\":[\"本格\"],\"qualityScore\":88,\"qualityIssues\":[],\"qualitySummary\":\"结构清晰\"}"
+        "输出示例：{\"title\":\"冷掉的水\",\"surface\":\"男人喝了一口冷水后报警。\",\"truth\":\"水本来是热的，说明有人进过房间。\",\"solutionPoints\":[\"50|point-1|杯中液体状态异常|水变冷,原本是热水\",\"50|point-2|有人进入房间|有人来过,有人进屋\"],\"hints\":[\"注意水温\"],\"difficulty\":\"easy\",\"tagAnalysis\":{\"worldview\":\"本格\",\"soupColor\":\"清汤\",\"roleType\":\"全人类\",\"difficultyTag\":\"入门\"},\"tags\":[\"本格\",\"清汤\",\"全人类\",\"入门\"],\"qualityScore\":88,\"qualityIssues\":[],\"qualitySummary\":\"结构清晰\"}"
       ].join("\n")
     },
     {

@@ -40,6 +40,21 @@ export interface AdminBatchPublishResult {
   failed: Array<{ id: string; message: string }>;
 }
 
+export interface AdminBatchDeleteResult {
+  deleted: ManagedPuzzle[];
+  failed: Array<{ id: string; message: string }>;
+}
+
+export interface AdminTagReanalysisInput {
+  ids?: string[];
+  status?: PuzzleStatus | "all";
+}
+
+export interface AdminTagReanalysisResult {
+  updated: ManagedPuzzle[];
+  unchanged: string[];
+}
+
 export interface AdminPuzzleUpdateInput {
   title: string;
   surface: string;
@@ -172,6 +187,44 @@ export async function publishAdminPuzzleBatch(ids: string[], options: AdminClien
   }
 
   return { published, failed };
+}
+
+export function deleteAdminPuzzle(id: string, options: AdminClientOptions = {}) {
+  return adminFetch<ManagedPuzzle>(
+    `/api/admin/puzzles/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: headers(options)
+    },
+    options
+  );
+}
+
+export async function deleteAdminPuzzleBatch(ids: string[], options: AdminClientOptions = {}): Promise<AdminBatchDeleteResult> {
+  const deleted: ManagedPuzzle[] = [];
+  const failed: Array<{ id: string; message: string }> = [];
+
+  for (const id of ids) {
+    try {
+      deleted.push(await deleteAdminPuzzle(id, options));
+    } catch (error) {
+      failed.push({ id, message: error instanceof Error ? error.message : "删除失败" });
+    }
+  }
+
+  return { deleted, failed };
+}
+
+export function reanalyzeAdminPuzzleTags(input: AdminTagReanalysisInput, options: AdminClientOptions = {}) {
+  return adminFetch<AdminTagReanalysisResult>(
+    "/api/admin/puzzles/reanalyze-tags",
+    {
+      method: "POST",
+      headers: headers(options, true),
+      body: JSON.stringify(input)
+    },
+    options
+  );
 }
 
 export function rejectAdminPuzzle(id: string, options: AdminClientOptions = {}) {

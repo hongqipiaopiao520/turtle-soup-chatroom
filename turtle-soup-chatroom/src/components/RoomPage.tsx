@@ -1,6 +1,6 @@
 import { ArrowLeft, Award, BadgeCheck, Clock, Compass, KeyRound, Lightbulb, Link, Sparkles, Target, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { HostAnswer, PublicHostAnswer, PublicRoomState } from "../shared/types";
+import type { HostPersonaId, PublicHostAnswer, PublicRoomState } from "../shared/types";
 import { HostPanel } from "./HostPanel";
 import { SidePanel } from "./SidePanel";
 
@@ -9,6 +9,18 @@ const difficultyLabel = {
   medium: "中等",
   hard: "困难"
 };
+
+const hostPersonaNames: Record<HostPersonaId, string> = {
+  xiaowai: "小歪",
+  dav: "大V",
+  guigui: "龟龟"
+};
+
+function formatHostAnswer(answer: PublicHostAnswer): string {
+  if (!answer.styleText) return answer.answer;
+  const needsSpace = !/[\s，。！？、；：,.!?;:]$/.test(answer.answer) && !/^[\s，。！？、；：,.!?;:]/.test(answer.styleText);
+  return `${answer.answer}${needsSpace ? " " : ""}${answer.styleText}`;
+}
 
 function formatDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "—";
@@ -60,6 +72,7 @@ export function RoomPage({
   const [settlementOpen, setSettlementOpen] = useState(room.answerUnlocked);
   const lastUnlockedRoomRef = useRef<string | null>(room.answerUnlocked ? room.id : null);
   const statusLabel = room.answerUnlocked ? "汤底已解锁" : "进行中";
+  const hostPersonaName = hostPersonaNames[room.hostPersonaId] ?? "小歪";
   const rankedPlayers = [...room.players].sort((a, b) => b.score - a.score);
   const mvp = room.settlement?.mvpPlayerId
     ? room.players.find((player) => player.id === room.settlement?.mvpPlayerId)
@@ -139,12 +152,19 @@ export function RoomPage({
         </button>
         <div className="room-title-meta">
           <h1>私人房间</h1>
+          <span className="host-persona-pill">主持人：{hostPersonaName}</span>
           <span className={`status-pill room-status-${room.status}`}>{statusLabel}</span>
-          <span className="room-code-pill">{room.id}</span>
         </div>
-        <button className="primary-button" onClick={copyInvite}>
-          <Link size={16} /> {copied ? "已复制" : "邀请好友"}
-        </button>
+        <div className="room-actions">
+          {room.answerUnlocked && (
+            <button className="settlement-button" onClick={() => setSettlementOpen(true)}>
+              <Award size={16} /> 查看结算
+            </button>
+          )}
+          <button className="primary-button" onClick={copyInvite}>
+            <Link size={16} /> {copied ? "已复制" : "邀请好友"}
+          </button>
+        </div>
       </header>
       <section className="room-grid">
         <aside className="puzzle-panel">
@@ -164,7 +184,6 @@ export function RoomPage({
         <SidePanel
           room={room}
           playerId={playerId}
-          onOpenSettlement={() => setSettlementOpen(true)}
           onSendChat={onSendChat}
           isChatPending={isChatPending}
         />
@@ -176,14 +195,16 @@ export function RoomPage({
               <X size={18} />
             </button>
             <div className="settlement-hero">
-              <span className="panel-kicker">破案报告</span>
-              <h2 id="settlement-title">{room.puzzle.title}</h2>
-              <div className="settlement-meta-row">
-                <span className={`difficulty difficulty-${room.puzzle.difficulty}`}>{difficultyLabel[room.puzzle.difficulty]}</span>
-                <span><Clock size={14} /> {settlement ? formatDuration(settlement.durationMs) : "—"}</span>
-                <span>提问 {room.questionsUsed} 次</span>
-                {room.hintsRevealed > 0 && <span><Lightbulb size={14} /> 提示 {room.hintsRevealed} 条</span>}
-                {endedByHost && <span className="host-reveal-tag">房主揭晓</span>}
+              <div className="settlement-hero-copy">
+                <span className="panel-kicker">破案报告</span>
+                <h2 id="settlement-title">{room.puzzle.title}</h2>
+                <div className="settlement-meta-row">
+                  <span className={`difficulty difficulty-${room.puzzle.difficulty}`}>{difficultyLabel[room.puzzle.difficulty]}</span>
+                  <span><Clock size={14} /> {settlement ? formatDuration(settlement.durationMs) : "—"}</span>
+                  <span>提问 {room.questionsUsed} 次</span>
+                  {room.hintsRevealed > 0 && <span><Lightbulb size={14} /> 提示 {room.hintsRevealed} 条</span>}
+                  {endedByHost && <span className="host-reveal-tag">房主揭晓</span>}
+                </div>
               </div>
               <div className="settlement-score">
                 <Sparkles size={20} />
@@ -243,7 +264,7 @@ export function RoomPage({
                   <div className="timeline-content">
                     <span className="timeline-player">{item.playerName}</span>
                     <span className="timeline-question">{item.question}</span>
-                    <span className={`timeline-answer timeline-answer-${item.answerType}`}>{item.answer}</span>
+                    <span className={`timeline-answer timeline-answer-${item.answerType}`}>{formatHostAnswer(item)}</span>
                     {item.progressDelta > 0 && <span className="timeline-delta">+{item.progressDelta}%</span>}
                   </div>
                 </div>

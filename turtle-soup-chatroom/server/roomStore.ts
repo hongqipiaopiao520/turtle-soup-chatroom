@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   HostAnswer,
   HostPending,
+  HostPersonaId,
   Player,
   Puzzle,
   RoomSettlement,
@@ -13,6 +14,11 @@ import { parseSolutionPointDefinitions } from "./puzzleImporter";
 
 const rooms = new Map<string, RoomState>();
 const ANSWER_UNLOCK_PROGRESS = 95;
+const HOST_PERSONA_IDS: HostPersonaId[] = ["xiaowai", "dav", "guigui"];
+
+export function normalizeHostPersonaId(value: unknown): HostPersonaId {
+  return HOST_PERSONA_IDS.includes(value as HostPersonaId) ? (value as HostPersonaId) : "xiaowai";
+}
 
 function id(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
@@ -81,6 +87,7 @@ function normalizeHostPending(pending?: HostPending): HostPending | undefined {
 function normalizeRoom(room: RoomState): RoomState {
   return {
     ...room,
+    hostPersonaId: normalizeHostPersonaId((room as { hostPersonaId?: unknown }).hostPersonaId),
     puzzle: normalizePuzzle(room.puzzle),
     players: room.players.map(normalizePlayer),
     hostLog: room.hostLog.map(normalizeHostAnswer),
@@ -164,7 +171,7 @@ export function getRoom(roomId: string) {
 export function createRoom(
   puzzle: Puzzle,
   hostName: string,
-  options: { questionLimit?: number } = {}
+  options: { questionLimit?: number; hostPersonaId?: unknown } = {}
 ): RoomStoreSession {
   const host: Player = {
     id: id("player"),
@@ -179,6 +186,7 @@ export function createRoom(
   const room: RoomState = {
     id: id("room"),
     puzzle,
+    hostPersonaId: normalizeHostPersonaId(options.hostPersonaId),
     status: "playing",
     players: [host],
     hostLog: [],

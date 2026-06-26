@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { normalizeImportedSolutionPoints } from "../server/puzzleImporter.ts";
+import { inferPuzzleTagsFromText, normalizePuzzleTags } from "../server/puzzleTags.ts";
 function decodeEntity(value) {
   return value
     .replace(/&nbsp;/g, " ")
@@ -228,13 +229,19 @@ function difficultyFor(row) {
 }
 
 function tagsFor(row) {
-  const tags = [];
-  if (row.sourceTitle?.includes("许二木")) tags.push("许二木");
-  if (row.sourceTitle?.includes("经典")) tags.push("经典");
-  if (row.truth.includes("鬼") || row.surface.includes("诡") || row.truth.includes("灵异")) tags.push("灵异");
-  if (row.truth.includes("杀") || row.truth.includes("尸") || row.truth.includes("死")) tags.push("悬疑");
-  if (tags.length === 0) tags.push("待分类");
-  return [...new Set(tags)].slice(0, 6);
+  const difficulty = difficultyFor(row);
+  const inferred = inferPuzzleTagsFromText({
+    difficulty,
+    surface: row.surface,
+    truth: row.truth
+  });
+
+  return normalizePuzzleTags({
+    tags: inferred,
+    difficulty,
+    surface: row.surface,
+    truth: row.truth
+  });
 }
 
 function qualityIssuesFor(row) {
@@ -258,6 +265,7 @@ function qualityScoreFor(row, issues) {
 export function convertMarkdownRowToPuzzle(row, status = "published") {
   const now = new Date().toISOString();
   const issues = qualityIssuesFor(row);
+  const difficulty = difficultyFor(row);
   const publishedAt = status === "published" ? now : undefined;
   const rawText = [
     `标题：${row.title}`,
@@ -272,7 +280,7 @@ export function convertMarkdownRowToPuzzle(row, status = "published") {
     surface: row.surface,
     truth: row.truth,
     solutionPoints: solutionPointsFor(row),
-    difficulty: difficultyFor(row),
+    difficulty,
     tags: tagsFor(row),
     author: row.sourceTitle || "Markdown 导入",
     rating: 0,

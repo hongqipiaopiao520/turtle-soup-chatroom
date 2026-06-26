@@ -1,6 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import type { Puzzle } from "../src/shared/types";
-import { askHost, isHostErrorDecision } from "./aiHost";
+import { askHost, calculateStylePolicy, isHostErrorDecision } from "./aiHost";
 import {
   addChatMessage,
   addHostAnswer,
@@ -41,11 +41,12 @@ export function getPublishedPuzzleForRoom(puzzleRepository: PuzzleRepository, pu
 
 export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDependencies) {
   io.on("connection", (socket) => {
-    socket.on("room:create", ({ puzzleId, playerName, questionLimit }) => {
+    socket.on("room:create", ({ puzzleId, playerName, questionLimit, hostPersonaId }) => {
       try {
         const puzzle = getPublishedPuzzleForRoom(dependencies.puzzleRepository, puzzleId);
         const session = createRoom(puzzle, playerName, {
-          questionLimit: questionLimit === 0 ? 0 : undefined
+          questionLimit: questionLimit === 0 ? 0 : undefined,
+          hostPersonaId
         });
         const { room, playerId } = session;
         socket.join(room.id);
@@ -100,6 +101,11 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
         dependencies.roomRepository.save(pendingRoom);
         io.to(pendingRoom.id).emit("room:state", toPublicRoomState(pendingRoom));
 
+        const stylePolicy = calculateStylePolicy({
+          mode: pendingRoom.hostPending?.mode ?? "question",
+          currentProgress: pendingRoom.progress
+        });
+
         const decision = await askHost({
           puzzle: pendingRoom.puzzle,
           history: pendingRoom.hostLog.map((item) => ({
@@ -108,7 +114,9 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
           })),
           question: pendingRoom.hostPending?.question ?? question,
           mode: pendingRoom.hostPending?.mode ?? "question",
-          currentProgress: pendingRoom.progress
+          currentProgress: pendingRoom.progress,
+          hostPersonaId: pendingRoom.hostPersonaId,
+          stylePolicy
         });
 
         if (isHostErrorDecision(decision)) {
@@ -128,6 +136,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
           question: pendingRoom.hostPending?.question ?? question,
           answerType: decision.answerType,
           answer: decision.answer,
+          styleText: decision.styleText,
           progress: decision.progress,
           coveredPointIds: decision.coveredPointIds,
           coverageConfidence: decision.coverageConfidence

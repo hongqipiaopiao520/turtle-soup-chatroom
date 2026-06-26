@@ -42,9 +42,13 @@ describe("layout CSS", () => {
   });
 
   it("keeps the host submit button text on one line while pending", () => {
-    expect(css).toMatch(/\.ask-box\s*\{[^}]*grid-template-columns:\s*minmax\(118px,\s*150px\) minmax\(0,\s*1fr\) 92px/s);
+    expect(css).toMatch(/\.ask-box\s*\{[^}]*grid-template-columns:\s*178px minmax\(0,\s*1fr\) 96px/s);
     expect(css).toMatch(/\.ask-box \.primary-button\s*\{[^}]*white-space:\s*nowrap/s);
+    expect(css).toMatch(/\.segmented-option\s*\{[^}]*white-space:\s*nowrap/s);
     expect(css).toMatch(/\.ask-box textarea\s*\{[^}]*height:\s*44px/s);
+    expect(css).toMatch(/\.host-tool-button\s*\{[^}]*min-width:\s*44px/s);
+    expect(css).toMatch(/\.host-composer\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
+    expect(css).toMatch(/\.host-tool-popover\s*\{[^}]*position:\s*absolute/s);
   });
 
   it("keeps room top status and answer-card controls compact", () => {

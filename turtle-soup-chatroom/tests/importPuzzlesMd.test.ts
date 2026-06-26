@@ -114,7 +114,23 @@ describe("markdown puzzle import", () => {
     expect(puzzle.publishedAt).toBeTruthy();
     expect(puzzle.rawText).toContain("汤面：妹妹的房间传来声音");
     expect(puzzle.solutionPoints.length).toBeGreaterThanOrEqual(1);
-    expect(puzzle.tags).toContain("许二木");
+    expect(puzzle.tags).toEqual(["本格", "清汤", "全人类", "入门"]);
+    expect(puzzle.tags).not.toContain("许二木");
+  });
+
+  it("uses safe taxonomy tags instead of concrete markdown answer facts", () => {
+    const puzzle = convertMarkdownRowToPuzzle({
+      index: 9,
+      title: "镜中人",
+      surface: "我在镜子里看见了和爸爸一模一样的人。",
+      truth: "爸爸已经被替换，真正的爸爸被杀死藏了起来。",
+      sourceTitle: "许二木S1",
+      sourceUrl: "https://example.test/source"
+    });
+
+    expect(puzzle.tags).toEqual(["本格", "红汤", "全人类", "入门"]);
+    expect(puzzle.tags).not.toContain("爸爸被替换");
+    expect(puzzle.tags).not.toContain("许二木");
   });
 
   it("splits long truth text into short atomic solution points", () => {

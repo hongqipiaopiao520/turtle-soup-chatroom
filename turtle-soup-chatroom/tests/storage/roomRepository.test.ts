@@ -16,9 +16,11 @@ function makeDb() {
 }
 
 function makeRoom(overrides: Partial<RoomState> = {}): RoomState {
+  const { hostPersonaId = "xiaowai", ...restOverrides } = overrides;
   return {
     id: "room-test",
     puzzle: seedPuzzles[0],
+    hostPersonaId,
     status: "playing",
     players: [
       {
@@ -43,7 +45,7 @@ function makeRoom(overrides: Partial<RoomState> = {}): RoomState {
     hintRequestedBy: [],
     revealedHints: [],
     createdAt: "2026-06-23T00:00:00.000Z",
-    ...overrides
+    ...restOverrides
   };
 }
 

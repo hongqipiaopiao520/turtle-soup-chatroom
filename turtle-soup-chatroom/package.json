@@ -10,6 +10,7 @@
     "backup:sqlite": "node scripts/backup-sqlite.mjs",
     "collect:puzzles": "node scripts/collect-puzzles.mjs",
     "import:puzzles-md": "tsx scripts/import-puzzles-md.mjs",
+    "normalize:puzzle-tags": "tsx scripts/normalize-puzzle-tags.mjs",
     "deploy:server": "bash scripts/deploy-server.sh",
     "test": "vitest run",
     "test:watch": "vitest",

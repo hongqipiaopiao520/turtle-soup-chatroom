@@ -4,6 +4,7 @@ import type { ManagedPuzzle, PuzzleStatus } from "../src/shared/types";
 import { importPuzzleTextFromImages } from "./imagePuzzleImporter";
 import { parseMultipartImageUpload } from "./multipartImageUpload";
 import { createFallbackDraft, importPuzzleFromText } from "./puzzleImporter";
+import { analyzePuzzleTagsWithAi } from "./puzzleTags";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
 
 interface ImportTextInput {
@@ -41,6 +42,11 @@ const AdminPuzzleUpdateSchema = z.object({
   sourceTitle: z.string().trim().max(160).optional(),
   sourceUrl: z.string().trim().url().optional().or(z.literal("")),
   rawText: z.string().trim().max(10000).optional()
+});
+
+const ReanalyzeTagsSchema = z.object({
+  ids: z.array(z.string().trim().min(1)).max(500).optional(),
+  status: z.enum(["all", "draft", "reviewing", "published", "rejected"]).default("all")
 });
 
 export function isAdminRequestAuthorized(authorizationHeader: string | undefined) {
@@ -97,12 +103,41 @@ export function rejectAdminPuzzle(repository: PuzzleRepository, puzzleId: string
   return repository.reject(puzzleId);
 }
 
+export function deleteAdminPuzzle(repository: PuzzleRepository, puzzleId: string) {
+  return repository.deleteManaged(puzzleId);
+}
+
 export function updateAdminPuzzle(repository: PuzzleRepository, puzzleId: string, input: unknown) {
   const parsed = AdminPuzzleUpdateSchema.parse(input);
   return repository.updateManaged(puzzleId, {
     ...parsed,
     sourceUrl: parsed.sourceUrl || undefined
   });
+}
+
+export async function reanalyzePuzzleTags(repository: PuzzleRepository, input: unknown) {
+  const parsed = ReanalyzeTagsSchema.parse(input);
+  const candidates = parsed.ids?.length
+    ? parsed.ids.map((id) => repository.findById(id)).filter((puzzle): puzzle is ManagedPuzzle => Boolean(puzzle))
+    : repository.listManaged(parsed.status === "all" ? undefined : parsed.status);
+  const updated: ManagedPuzzle[] = [];
+  const unchanged: string[] = [];
+
+  for (const puzzle of candidates) {
+    const tags = await analyzePuzzleTagsWithAi({
+      title: puzzle.title,
+      difficulty: puzzle.difficulty,
+      surface: puzzle.surface,
+      truth: puzzle.truth
+    });
+    if (JSON.stringify(tags) === JSON.stringify(puzzle.tags)) {
+      unchanged.push(puzzle.id);
+      continue;
+    }
+    updated.push(repository.updateTags(puzzle.id, tags));
+  }
+
+  return { updated, unchanged };
 }
 
 export function createAdminPuzzleRouter(repository: PuzzleRepository) {
@@ -155,12 +190,28 @@ export function createAdminPuzzleRouter(repository: PuzzleRepository) {
     }
   });
 
+  router.post("/puzzles/reanalyze-tags", async (request, response) => {
+    try {
+      response.json(await reanalyzePuzzleTags(repository, request.body));
+    } catch (error) {
+      response.status(400).json({ message: error instanceof Error ? error.message : "标签重新分析失败" });
+    }
+  });
+
   router.post("/puzzles/:id/publish", (request, response) => {
     response.json(publishAdminPuzzle(repository, request.params.id));
   });
 
   router.post("/puzzles/:id/reject", (request, response) => {
     response.json(rejectAdminPuzzle(repository, request.params.id));
+  });
+
+  router.delete("/puzzles/:id", (request, response) => {
+    try {
+      response.json(deleteAdminPuzzle(repository, request.params.id));
+    } catch (error) {
+      response.status(404).json({ message: error instanceof Error ? error.message : "题目不存在" });
+    }
   });
 
   router.put("/puzzles/:id", (request, response) => {

@@ -18,6 +18,7 @@ function makeRoom(): RoomState {
   return {
     id: "room-test",
     puzzle: seedPuzzles[0],
+    hostPersonaId: "xiaowai",
     status: "playing",
     players: [
       {
@@ -60,6 +61,18 @@ describe("roomPersistence", () => {
     savePersistedRooms([room], filePath);
 
     expect(loadPersistedRooms(filePath)).toEqual([room]);
+  });
+
+  it("preserves the selected host persona in room snapshots", () => {
+    const filePath = makeTmpPath();
+    const room = {
+      ...makeRoom(),
+      hostPersonaId: "dav" as const
+    };
+
+    savePersistedRooms([room], filePath);
+
+    expect(loadPersistedRooms(filePath)[0].hostPersonaId).toBe("dav");
   });
 
   it("returns an empty snapshot for a missing file", () => {

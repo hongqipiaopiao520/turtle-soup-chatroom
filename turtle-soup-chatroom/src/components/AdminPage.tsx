@@ -1,15 +1,17 @@
-import { Check, DownloadCloud, RefreshCw, Save, Search, ShieldCheck, X } from "lucide-react";
+import { Check, DownloadCloud, RefreshCw, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import type { ChangeEvent, ClipboardEvent, Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   type AdminBatchImportFailure,
   type AdminImageImportResult,
+  deleteAdminPuzzleBatch,
   fetchAdminPuzzles,
   importAdminPuzzleBatch,
   importAdminPuzzleText,
   parseAdminPuzzleImages,
   publishAdminPuzzleBatch,
   publishAdminPuzzle,
+  reanalyzeAdminPuzzleTags,
   rejectAdminPuzzle,
   updateAdminPuzzle
 } from "../client/adminPuzzles";
@@ -75,11 +77,34 @@ export function AdminPage({
   const [message, setMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [adminQuery, setAdminQuery] = useState("");
+  const [adminDifficulty, setAdminDifficulty] = useState<Difficulty | "all">("all");
+  const [adminTag, setAdminTag] = useState("all");
 
   const selectedPuzzle = useMemo(
     () => puzzles.find((puzzle) => puzzle.id === selectedId) ?? puzzles[0],
     [puzzles, selectedId]
   );
+  const availableTags = useMemo(
+    () => Array.from(new Set(puzzles.flatMap((puzzle) => puzzle.tags))).sort((left, right) => left.localeCompare(right, "zh-CN")),
+    [puzzles]
+  );
+  const filteredPuzzles = useMemo(() => {
+    const query = adminQuery.trim().toLowerCase();
+    return puzzles.filter((puzzle) => {
+      const matchesQuery = !query || [
+        puzzle.title,
+        puzzle.surface,
+        puzzle.truth,
+        puzzle.sourceTitle ?? "",
+        puzzle.sourceUrl ?? "",
+        puzzle.tags.join(" ")
+      ].some((value) => value.toLowerCase().includes(query));
+      const matchesDifficulty = adminDifficulty === "all" || puzzle.difficulty === adminDifficulty;
+      const matchesTag = adminTag === "all" || puzzle.tags.includes(adminTag);
+      return matchesQuery && matchesDifficulty && matchesTag;
+    });
+  }, [adminDifficulty, adminQuery, adminTag, puzzles]);
 
   useEffect(() => {
     if (selectedPuzzle) {
@@ -347,6 +372,63 @@ export function AdminPage({
     }
   }
 
+  async function reanalyzeSelectedTags() {
+    const ids = selectedIds.length > 0 ? selectedIds : selectedPuzzle ? [selectedPuzzle.id] : [];
+    if (ids.length === 0) {
+      setMessage("请先选择要重新分析标签的题目");
+      return;
+    }
+    setIsBusy(true);
+    setMessage("正在重新分析标签...");
+    try {
+      const result = await reanalyzeAdminPuzzleTags({ ids }, { token: token.trim() || undefined });
+      setPuzzles((current) => current.map((puzzle) => result.updated.find((item) => item.id === puzzle.id) ?? puzzle));
+      const updatedSelected = result.updated.find((item) => item.id === selectedId);
+      if (updatedSelected) {
+        setDraft(puzzleToDraft(updatedSelected));
+      }
+      setMessage(`已更新 ${result.updated.length} 条标签，${result.unchanged.length} 条无需修改`);
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function deleteSelectedImports() {
+    const ids = selectedIds.length > 0
+      ? selectedIds.filter((id) => puzzles.some((puzzle) => puzzle.id === id))
+      : selectedPuzzle ? [selectedPuzzle.id] : [];
+    if (ids.length === 0) {
+      setMessage("请先选择要删除的导入题目");
+      return;
+    }
+    const confirmed = window.confirm(`确定删除 ${ids.length} 条导入题目吗？此操作不会进入已驳回列表。`);
+    if (!confirmed) return;
+    setIsBusy(true);
+    setMessage("正在删除导入题目...");
+    try {
+      const result = await deleteAdminPuzzleBatch(ids, { token: token.trim() || undefined });
+      const deletedIds = new Set(result.deleted.map((puzzle) => puzzle.id));
+      const nextPuzzles = puzzles.filter((puzzle) => !deletedIds.has(puzzle.id));
+      setPuzzles(nextPuzzles);
+      setSelectedIds((current) => current.filter((id) => result.failed.some((failure) => failure.id === id)));
+      if (!selectedPuzzle || deletedIds.has(selectedPuzzle.id) || !nextPuzzles.some((puzzle) => puzzle.id === selectedPuzzle.id)) {
+        const nextSelected = nextPuzzles[0];
+        setSelectedId(nextSelected?.id ?? "");
+        setDraft(puzzleToDraft(nextSelected));
+      }
+      const failureText = result.failed.length
+        ? `，失败 ${result.failed.length} 条：${result.failed.map((failure) => failure.message).join("；")}`
+        : "";
+      setMessage(`已删除 ${result.deleted.length} 条导入题目${failureText}`);
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   async function rejectSelected() {
     if (!selectedPuzzle) return;
     setIsBusy(true);
@@ -376,7 +458,7 @@ export function AdminPage({
   }
 
   function selectAllVisible() {
-    setSelectedIds(puzzles.map((puzzle) => puzzle.id));
+    setSelectedIds(filteredPuzzles.map((puzzle) => puzzle.id));
   }
 
   function clearSelected() {
@@ -509,11 +591,11 @@ export function AdminPage({
         <aside className="admin-list-panel">
           <div className="admin-list-head">
             <h2>审核队列</h2>
-            <span>{puzzles.length} 条</span>
+            <span>{filteredPuzzles.length}/{puzzles.length} 条</span>
           </div>
           <div className="admin-bulk-actions">
             <span>已选择 {selectedIds.length} 条</span>
-            <button className="ghost-button" type="button" onClick={selectAllVisible} disabled={isBusy || puzzles.length === 0}>
+            <button className="ghost-button" type="button" onClick={selectAllVisible} disabled={isBusy || filteredPuzzles.length === 0}>
               全选当前列表
             </button>
             <button className="ghost-button" type="button" onClick={clearSelected} disabled={isBusy || selectedIds.length === 0}>
@@ -522,13 +604,45 @@ export function AdminPage({
             <button className="primary-button" type="button" onClick={publishSelectedBatch} disabled={isBusy || selectedIds.length === 0}>
               <Check size={16} /> 批量发布
             </button>
+            <button className="ghost-button" type="button" onClick={reanalyzeSelectedTags} disabled={isBusy || (!selectedPuzzle && selectedIds.length === 0)}>
+              <RefreshCw size={16} /> 重新分析标签
+            </button>
+            <button className="ghost-button danger-button" type="button" onClick={deleteSelectedImports} disabled={isBusy || (!selectedPuzzle && selectedIds.length === 0)}>
+              <Trash2 size={16} /> 删除导入
+            </button>
           </div>
-          <label className="admin-search">
-            <Search size={16} />
-            <span>按左侧状态筛选，选择题目后在右侧编辑。</span>
-          </label>
+          <div className="admin-list-filters" aria-label="题库列表筛选">
+            <label className="admin-search">
+              <Search size={16} />
+              <input
+                value={adminQuery}
+                onChange={(event) => setAdminQuery(event.target.value)}
+                placeholder="筛选标题、汤面、来源、标签..."
+              />
+            </label>
+            <SelectField
+              value={adminDifficulty}
+              onChange={(value) => setAdminDifficulty(value as Difficulty | "all")}
+              ariaLabel="筛选难度"
+              options={[
+                { value: "all", label: "全部难度" },
+                { value: "easy", label: "简单" },
+                { value: "medium", label: "中等" },
+                { value: "hard", label: "困难" }
+              ]}
+            />
+            <SelectField
+              value={adminTag}
+              onChange={setAdminTag}
+              ariaLabel="筛选标签"
+              options={[
+                { value: "all", label: "全部标签" },
+                ...availableTags.map((tag) => ({ value: tag, label: tag }))
+              ]}
+            />
+          </div>
           <div className="admin-puzzle-list">
-            {puzzles.map((puzzle) => (
+            {filteredPuzzles.map((puzzle) => (
               <div
                 className={`admin-puzzle-row ${puzzle.id === selectedPuzzle?.id ? "admin-puzzle-row-active" : ""}`}
                 key={puzzle.id}
@@ -556,6 +670,7 @@ export function AdminPage({
               </div>
             ))}
             {puzzles.length === 0 && <p className="admin-empty">暂无题目，先导入一条原文。</p>}
+            {puzzles.length > 0 && filteredPuzzles.length === 0 && <p className="admin-empty">没有符合筛选条件的题目。</p>}
           </div>
         </aside>
 
