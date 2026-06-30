@@ -43,8 +43,9 @@ export function SidePanel({
   }
 
   return (
-    <aside className="side-panel">
+    <aside className="side-panel auxiliary-rail">
       <section className="side-section chat-section">
+        <div className="aux-rail-header">辅助栏</div>
         <h2>
           <MessageCircle size={17} /> 游戏聊天
         </h2>
@@ -83,10 +84,10 @@ export function SidePanel({
           </button>
         </div>
       </section>
-      <div className="side-summary-grid">
-        <section className="side-section players-section side-compact-section">
+      <div className="side-tool-drawer">
+        <section className="tool-drawer-section players-section">
           <h2>
-            <Users size={17} /> 在线用户 ({room.players.length})
+            <Users size={15} /> 在线用户 ({room.players.length})
           </h2>
           <div className="player-list">
             {room.players.map((player) => (
@@ -97,10 +98,10 @@ export function SidePanel({
             ))}
           </div>
         </section>
-        <section className="side-section score-section side-compact-section">
+        <section className="tool-drawer-section score-section">
           <div className="side-section-heading">
             <h2>
-              <Award size={17} /> 贡献榜
+              <Award size={15} /> 贡献榜
             </h2>
           </div>
           <div className="score-list">
@@ -115,17 +116,17 @@ export function SidePanel({
             ))}
           </div>
         </section>
+        <section className="tool-drawer-section notes-section">
+          <h2>
+            <NotebookTabs size={15} /> 调查卷宗
+          </h2>
+          {room.caseNotes.length === 0 ? (
+            <p className="muted">收藏关键问答后会出现在这里。</p>
+          ) : (
+            room.caseNotes.map((note) => <pre key={note.id}>{note.body}</pre>)
+          )}
+        </section>
       </div>
-      <section className="side-section notes-section">
-        <h2>
-          <NotebookTabs size={17} /> 调查卷宗
-        </h2>
-        {room.caseNotes.length === 0 ? (
-          <p className="muted">点击问答里的“收藏”把关键线索放进这里。</p>
-        ) : (
-          room.caseNotes.map((note) => <pre key={note.id}>{note.body}</pre>)
-        )}
-      </section>
     </aside>
   );
 }

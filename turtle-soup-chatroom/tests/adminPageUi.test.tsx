@@ -30,24 +30,26 @@ function makePuzzle(): ManagedPuzzle {
 }
 
 describe("AdminPage", () => {
-  it("renders the puzzle workbench with import, editor, and actions", () => {
+  it("renders admin tabs and defaults to the puzzle review workbench", () => {
     const markup = renderToStaticMarkup(
       <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
     );
 
     expect(markup).toContain("题库审核台");
-    expect(markup).toContain("粘贴原文导入");
+    expect(markup).toContain("导入题目");
+    expect(markup).toContain("题库审核");
+    expect(markup).toContain("AI 主持质检");
+    expect(markup).toContain("审核队列");
     expect(markup).toContain("雨夜站台");
-    expect(markup).toContain("深夜的站台空无一人");
-    expect(markup).toContain("沉浸式告别仪式");
     expect(markup).toContain("保存修改");
     expect(markup).toContain("发布");
-    expect(markup).toContain("驳回");
+    expect(markup).not.toContain("粘贴原文导入");
+    expect(markup).not.toContain("AI Host Harness");
   });
 
-  it("renders file import controls", () => {
+  it("renders import tools in the import tab", () => {
     const markup = renderToStaticMarkup(
-      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
+      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad initialTab="import" />
     );
 
     expect(markup).toContain("文件导入");
@@ -57,7 +59,7 @@ describe("AdminPage", () => {
 
   it("renders image import controls with editable preview flow", () => {
     const markup = renderToStaticMarkup(
-      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
+      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad initialTab="import" />
     );
 
     expect(markup).toContain("图片导入");
@@ -95,6 +97,18 @@ describe("AdminPage", () => {
     expect(markup).toContain("筛选标题、汤面、来源、标签");
     expect(markup).toContain("中等");
     expect(markup).not.toContain("<select");
+  });
+
+  it("renders AI Host Harness in its own tab", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad initialTab="ai-host" />
+    );
+
+    expect(markup).toContain("AI Host Harness");
+    expect(markup).toContain("主持质检");
+    expect(markup).toContain("刷新房间");
+    expect(markup).not.toContain("审核队列");
+    expect(markup).not.toContain("粘贴原文导入");
   });
 
   it("formats several batch import failures with row-level reasons", () => {

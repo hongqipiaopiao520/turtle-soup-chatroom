@@ -50,9 +50,9 @@ const ReanalyzeTagsSchema = z.object({
 });
 
 export function isAdminRequestAuthorized(authorizationHeader: string | undefined) {
+  if (process.env.NODE_ENV !== "production") return true;
   const token = process.env.ADMIN_TOKEN;
-  if (!token && process.env.NODE_ENV !== "production") return true;
-  return authorizationHeader === `Bearer ${token}`;
+  return Boolean(token) && authorizationHeader === `Bearer ${token}`;
 }
 
 export function listAdminPuzzles(repository: PuzzleRepository, status?: PuzzleStatus) {

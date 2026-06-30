@@ -19,7 +19,8 @@ function toPublicPuzzle(puzzle: Puzzle): PublicPuzzle {
 }
 
 function toPublicHostAnswer(answer: HostAnswer): PublicHostAnswer {
-  const { coveredPointIds, coverageConfidence, ...publicFields } = answer;
+  const { coveredPointIds, coverageConfidence, criticReview, ...publicFields } = answer;
+  void criticReview;
   return publicFields;
 }
 

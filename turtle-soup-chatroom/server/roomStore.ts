@@ -2,6 +2,7 @@ import type {
   CaseNote,
   ChatMessage,
   HostAnswer,
+  HostCriticReview,
   HostPending,
   HostPersonaId,
   Player,
@@ -318,6 +319,16 @@ export function addHostAnswer(
     });
   }
   return item;
+}
+
+export function saveCriticReview(roomId: string, answerId: string, review: HostCriticReview): RoomState {
+  const room = requireRoom(roomId);
+  const answer = room.hostLog.find((item) => item.id === answerId);
+  if (!answer) {
+    throw new Error("问答不存在");
+  }
+  answer.criticReview = review;
+  return room;
 }
 
 export function setHostPending(

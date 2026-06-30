@@ -3,8 +3,10 @@ import express from "express";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { createAdminPuzzleRouter } from "./adminPuzzleRoutes";
+import { createAiHostHarnessRouter } from "./aiHostHarnessRoutes";
 import { getRoom } from "./roomStore";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
+import type { RoomRepository } from "./storage/roomRepository";
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || "24mb";
 
@@ -58,7 +60,7 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function createApp(puzzleRepository: PuzzleRepository) {
+export function createApp(puzzleRepository: PuzzleRepository, roomRepository?: RoomRepository) {
   const app = express();
   app.use(cors(buildCorsOptions()));
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
@@ -91,6 +93,9 @@ export function createApp(puzzleRepository: PuzzleRepository) {
   });
 
   app.use("/api/admin", createAdminPuzzleRouter(puzzleRepository));
+  if (roomRepository) {
+    app.use("/api/admin", createAiHostHarnessRouter(roomRepository));
+  }
   app.use(handlePayloadTooLargeError);
 
   const clientAssets = getClientAppAssets();

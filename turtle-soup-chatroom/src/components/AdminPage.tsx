@@ -17,9 +17,11 @@ import {
 } from "../client/adminPuzzles";
 import { parsePuzzleFileContent, type ParsedPuzzleFileItem } from "../client/puzzleFileImport";
 import type { Difficulty, ManagedPuzzle, PuzzleStatus } from "../shared/types";
+import { AiHostHarnessPanel } from "./AiHostHarnessPanel";
 import { SelectField } from "./ui";
 
 type AdminStatusFilter = PuzzleStatus | "all";
+type AdminTab = "import" | "puzzles" | "ai-host";
 
 const MAX_IMAGE_TOTAL_BYTES = 12 * 1024 * 1024;
 
@@ -55,12 +57,15 @@ export function formatBatchImportMessage(input: {
 
 export function AdminPage({
   initialPuzzles = [],
-  disableInitialLoad = false
+  disableInitialLoad = false,
+  initialTab = "puzzles"
 }: {
   initialPuzzles?: ManagedPuzzle[];
   disableInitialLoad?: boolean;
+  initialTab?: AdminTab;
 }) {
   const [token, setToken] = useState("");
+  const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [status, setStatus] = useState<AdminStatusFilter>("all");
   const [puzzles, setPuzzles] = useState<ManagedPuzzle[]>(initialPuzzles);
   const [selectedId, setSelectedId] = useState(initialPuzzles[0]?.id ?? "");
@@ -160,6 +165,7 @@ export function AdminPage({
       );
       setPuzzles((current) => [imported, ...current.filter((item) => item.id !== imported.id)]);
       setSelectedId(imported.id);
+      setActiveTab("puzzles");
       setRawImport("");
       setMessage("已导入并发布");
     } catch (error) {
@@ -260,6 +266,7 @@ export function AdminPage({
       );
       setPuzzles((current) => [imported, ...current.filter((item) => item.id !== imported.id)]);
       setSelectedId(imported.id);
+      setActiveTab("puzzles");
       setImageItems([]);
       setImageImportResult(null);
       setImageRawText("");
@@ -285,6 +292,9 @@ export function AdminPage({
         ...current.filter((item) => !result.imported.some((imported) => imported.id === item.id))
       ]);
       setSelectedId(result.imported[0]?.id ?? selectedId);
+      if (result.imported.length > 0) {
+        setActiveTab("puzzles");
+      }
       if (result.failed.length === 0) {
         setFileItems([]);
       }
@@ -482,26 +492,30 @@ export function AdminPage({
               type="password"
             />
           </label>
-          <SelectField
-            value={status}
-            onChange={setStatus}
-            ariaLabel="审核状态"
-            options={[
-              { value: "all", label: "全部状态" },
-              { value: "draft", label: "草稿" },
-              { value: "reviewing", label: "待审核" },
-              { value: "published", label: "已发布" },
-              { value: "rejected", label: "已驳回" }
-            ]}
-          />
-          <button className="ghost-button" type="button" onClick={loadPuzzles} disabled={isBusy}>
-            <RefreshCw size={16} /> 刷新
-          </button>
         </div>
       </header>
 
+      <nav className="admin-tabs" aria-label="管理台模块">
+        {[
+          { id: "import" as const, label: "导入题目" },
+          { id: "puzzles" as const, label: "题库审核" },
+          { id: "ai-host" as const, label: "AI 主持质检" }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`admin-tab-button ${activeTab === tab.id ? "admin-tab-button-active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+            aria-pressed={activeTab === tab.id}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
       {message && <div className="admin-message">{message}</div>}
 
+      {activeTab === "import" && <div className="admin-tab-panel">
       <section className="admin-import-panel">
         <div>
           <h2>粘贴原文导入</h2>
@@ -586,12 +600,35 @@ export function AdminPage({
           )}
         </div>
       </section>
+      </div>}
 
+      {activeTab === "ai-host" && <div className="admin-tab-panel">
+        <AiHostHarnessPanel token={token} disabled={isBusy} />
+      </div>}
+
+      {activeTab === "puzzles" && <div className="admin-tab-panel">
       <section className="admin-workbench">
         <aside className="admin-list-panel">
           <div className="admin-list-head">
             <h2>审核队列</h2>
-            <span>{filteredPuzzles.length}/{puzzles.length} 条</span>
+            <div className="admin-list-head-actions">
+              <span>{filteredPuzzles.length}/{puzzles.length} 条</span>
+              <SelectField
+                value={status}
+                onChange={setStatus}
+                ariaLabel="审核状态"
+                options={[
+                  { value: "all", label: "全部状态" },
+                  { value: "draft", label: "草稿" },
+                  { value: "reviewing", label: "待审核" },
+                  { value: "published", label: "已发布" },
+                  { value: "rejected", label: "已驳回" }
+                ]}
+              />
+              <button className="ghost-button" type="button" onClick={loadPuzzles} disabled={isBusy}>
+                <RefreshCw size={16} /> 刷新
+              </button>
+            </div>
           </div>
           <div className="admin-bulk-actions">
             <span>已选择 {selectedIds.length} 条</span>
@@ -748,6 +785,7 @@ export function AdminPage({
           </AdminField>
         </form>
       </section>
+      </div>}
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import { ArrowLeft, Award, BadgeCheck, Clock, Compass, KeyRound, Lightbulb, Link, Sparkles, Target, X } from "lucide-react";
+import { ArrowLeft, Award, BadgeCheck, ClipboardList, Clock, Compass, KeyRound, Lightbulb, Link, Sparkles, Target, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { HostPersonaId, PublicHostAnswer, PublicRoomState } from "../shared/types";
 import { HostPanel } from "./HostPanel";
@@ -145,7 +145,7 @@ export function RoomPage({
   }
 
   return (
-    <main className="room-shell">
+    <main className="room-shell room-command-desk">
       <header className="room-topbar">
         <button className="ghost-button" onClick={onBack}>
           <ArrowLeft size={16} /> 离开
@@ -167,8 +167,11 @@ export function RoomPage({
         </div>
       </header>
       <section className="room-grid">
-        <aside className="puzzle-panel">
-          <span className="panel-kicker">汤面</span>
+        <aside className="puzzle-panel case-dossier">
+          <div className="case-dossier-header">
+            <span className="panel-kicker"><ClipboardList size={14} /> 案件档案</span>
+            <span className="case-file-code">CASE-001</span>
+          </div>
           <h2>{room.puzzle.title}</h2>
           <div className="tag-row">
             <span className={`difficulty difficulty-${room.puzzle.difficulty}`}>
@@ -178,7 +181,19 @@ export function RoomPage({
               <span key={tag}>#{tag}</span>
             ))}
           </div>
-          <p className="surface-text">{room.puzzle.surface}</p>
+          <div className="case-surface-card case-surface-feature">
+            <span>汤面</span>
+            <p className="surface-text">{room.puzzle.surface}</p>
+          </div>
+          <details className="case-rule-disclosure">
+            <summary>提问规则</summary>
+            <p>用可以回答“是 / 不是 / 无关”的问题逼近真相；有完整推理时切到“推理提交”。</p>
+          </details>
+          <div className="case-dossier-stats">
+            <span><strong>{room.questionsUsed}</strong><small>已问</small></span>
+            <span><strong>{room.progress}%</strong><small>完成度</small></span>
+            <span><strong>{room.caseNotes.length}</strong><small>线索</small></span>
+          </div>
         </aside>
         <HostPanel room={room} onAsk={onAsk} onPin={onPin} onReveal={onReveal} onRevealHint={onRevealHint} onRequestHint={onRequestHint} playerId={playerId} />
         <SidePanel

@@ -1,3 +1,4 @@
+import { BadgeCheck, Play, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { fetchPublicPuzzles } from "./client/puzzles";
 import {
@@ -24,10 +25,28 @@ type NameRequest =
   | { kind: "create"; puzzle: PublicPuzzle; unlimitedQuestions: boolean }
   | { kind: "join"; roomId: string };
 
-const hostPersonaOptions: { id: HostPersonaId; name: string }[] = [
-  { id: "xiaowai", name: "小歪" },
-  { id: "dav", name: "大V" },
-  { id: "guigui", name: "龟龟" }
+const hostPersonaOptions: { id: HostPersonaId; name: string; role: string; line: string; image: string }[] = [
+  {
+    id: "xiaowai",
+    name: "小歪",
+    role: "友好主持",
+    line: "节奏轻松，适合边聊边推。",
+    image: "/assets/host-xiaowai.png"
+  },
+  {
+    id: "dav",
+    name: "大V",
+    role: "冷面侦探",
+    line: "回答克制，压迫感更足。",
+    image: "/assets/host-dav.png"
+  },
+  {
+    id: "guigui",
+    name: "龟龟",
+    role: "慢速观察员",
+    line: "稳一点，慢慢靠近真相。",
+    image: "/assets/host-guigui.png"
+  }
 ];
 
 export function App() {
@@ -194,7 +213,7 @@ function PlayerApp() {
   );
 }
 
-function NameDialog({
+export function NameDialog({
   request,
   onCancel,
   onSubmit
@@ -209,27 +228,49 @@ function NameDialog({
   );
   const [hostPersonaId, setHostPersonaId] = useState<HostPersonaId>("xiaowai");
   const actionLabel = request.kind === "create" ? "创建房间" : "加入房间";
+  const dialogTitle = request.kind === "create" ? "开案登记" : "加入房间";
+  const caseTitle = request.kind === "create" ? request.puzzle.title : `房间 ${request.roomId}`;
+  const caseSurface = request.kind === "create" ? request.puzzle.surface : "输入昵称后加入正在推理的案台。";
 
   return (
     <div className="dialog-backdrop" role="presentation">
       <form
         className="name-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="name-dialog-title"
         onSubmit={(event) => {
           event.preventDefault();
           onSubmit(name, { unlimitedQuestions, hostPersonaId });
         }}
       >
-        <h2>输入昵称</h2>
-        <label>
-          昵称
+        <div className="name-dialog-beam" aria-hidden="true" />
+        <header className="name-dialog-header">
+          <div>
+            <span className="panel-kicker"><BadgeCheck size={14} /> CASE-001</span>
+            <h2 id="name-dialog-title">{dialogTitle}</h2>
+          </div>
+          <span className="name-dialog-status">AI HOST READY</span>
+        </header>
+
+        <div className="name-dialog-case-strip">
+          <span>当前案件</span>
+          <strong>{caseTitle}</strong>
+          <p>{caseSurface}</p>
+        </div>
+
+        <label className="name-dialog-field">
+          <span><UserRound size={15} /> 玩家席位</span>
           <input autoFocus value={name} onChange={(event) => setName(event.target.value)} maxLength={18} placeholder="访客" />
+          <small>不填会以“访客”入场</small>
         </label>
+
         {request.kind === "create" && (
           <>
             <fieldset className="name-dialog-personas">
               <legend>主持人</legend>
               {hostPersonaOptions.map((persona) => (
-                <label key={persona.id}>
+                <label className="host-persona-choice" key={persona.id}>
                   <input
                     type="radio"
                     name="hostPersonaId"
@@ -237,17 +278,27 @@ function NameDialog({
                     checked={hostPersonaId === persona.id}
                     onChange={() => setHostPersonaId(persona.id)}
                   />
-                  {persona.name}
+                  <span className="host-choice-art" aria-hidden="true">
+                    <img src={persona.image} alt="" />
+                  </span>
+                  <span className="host-choice-copy">
+                    <span>{persona.role}</span>
+                    <strong>{persona.name}</strong>
+                    <small>{persona.line}</small>
+                  </span>
                 </label>
               ))}
             </fieldset>
-            <label className="name-dialog-check">
+            <label className="name-dialog-check name-dialog-limit">
               <input
                 type="checkbox"
                 checked={unlimitedQuestions}
                 onChange={(event) => setUnlimitedQuestions(event.target.checked)}
               />
-              普通提问不限次数
+              <span>
+                <strong>普通提问不限次数</strong>
+                <small>展示模式更友好，玩家可以尽情追问。</small>
+              </span>
             </label>
           </>
         )}
@@ -256,7 +307,7 @@ function NameDialog({
             取消
           </button>
           <button className="primary-button" type="submit">
-            {actionLabel}
+            <Play size={16} /> {actionLabel}
           </button>
         </div>
       </form>

@@ -23,7 +23,7 @@ importRoomsSnapshot(storedRooms.length > 0 ? storedRooms : loadPersistedRooms())
 if (storedRooms.length === 0) {
   roomRepository.saveAll(exportRoomsSnapshot());
 }
-const app = createApp(puzzleRepository);
+const app = createApp(puzzleRepository, roomRepository);
 const server = http.createServer(app);
 
 const io = new Server(server, {

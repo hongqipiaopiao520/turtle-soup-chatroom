@@ -12,6 +12,7 @@ import {
   pinAnswer,
   rejoinRoom,
   resetRooms,
+  saveCriticReview,
   setHostPending
 } from "../server/roomStore";
 
@@ -44,6 +45,35 @@ describe("roomStore", () => {
     ]);
 
     expect(getRoom("legacy-room")?.hostPersonaId).toBe("xiaowai");
+  });
+
+  it("saves critic reviews on host answers", () => {
+    const { room, playerId } = createRoom(seedPuzzles[0], "房主");
+    const answer = addHostAnswer(room.id, {
+      playerId,
+      playerName: "房主",
+      question: "这是告别吗？",
+      answerType: "partial",
+      answer: "部分相关",
+      progress: 20
+    });
+
+    const updated = saveCriticReview(room.id, answer.id, {
+      id: "critic-1",
+      status: "flagged",
+      severity: "medium",
+      action: "downgrade_progress",
+      risks: ["progress_inflation"],
+      rationale: "进度偏高",
+      suggestedProgress: 10,
+      confidence: 0.7,
+      durationMs: 120,
+      reviewedAt: "2026-06-23T00:00:00.000Z"
+    });
+
+    expect(updated.hostLog[0].criticReview).toMatchObject({ id: "critic-1", risks: ["progress_inflation"] });
+    expect(getRoom(room.id)?.hostLog[0].criticReview?.status).toBe("flagged");
+    expect(() => saveCriticReview(room.id, "missing", updated.hostLog[0].criticReview!)).toThrow("问答不存在");
   });
 
   it("creates a room with unlimited ordinary questions", () => {

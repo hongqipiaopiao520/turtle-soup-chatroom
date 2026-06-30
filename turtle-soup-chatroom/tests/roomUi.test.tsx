@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { HostPanel } from "../src/components/HostPanel";
+import { HostPanel, getComposerModeConfig, getNewHintNotice } from "../src/components/HostPanel";
 import { RoomPage } from "../src/components/RoomPage";
 import { SidePanel } from "../src/components/SidePanel";
 import type { PublicRoomState } from "../src/shared/types";
@@ -120,6 +120,102 @@ describe("room UI settlement", () => {
     expect(markup).toContain("关键回复");
     expect(markup).toContain("最绕远提问");
     expect(markup).toContain("settlement-awards");
+  });
+
+  it("renders the active room as a detective command desk", () => {
+    const room = makeSolvedRoom();
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { origin: "http://localhost:5173" }, setTimeout: () => 0 }
+    });
+
+    const markup = renderToStaticMarkup(
+      <RoomPage
+        room={{ ...room, answerUnlocked: false, truthRevealed: false, status: "playing", hostLog: [], questionsUsed: 0, progress: 0, settlement: undefined }}
+        playerId="player-host"
+        onBack={() => undefined}
+        onAsk={() => undefined}
+        onPin={() => undefined}
+        onReveal={() => undefined}
+        onRevealHint={() => undefined}
+        onRequestHint={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+
+    expect(markup).toContain("room-command-desk");
+    expect(markup).toContain("case-dossier");
+    expect(markup).toContain("案件档案");
+    expect(markup).toContain("提问规则");
+    expect(markup).toContain("case-rule-disclosure");
+    expect(markup).toContain("<summary");
+    expect(markup).not.toContain("case-rule-card");
+    expect(markup).toContain("case-surface-feature");
+    expect(markup).toContain("case-status-strip");
+    expect(markup).not.toContain("case-status-summary");
+    expect(markup).not.toContain("当前汤面");
+    expect(markup).toContain("host-mini-status");
+    expect(markup).toContain("小歪 · 待提问");
+    expect(markup).toContain("推理完成度");
+    expect(markup).toContain("剩余 20 问");
+    expect(markup).not.toContain("host-stage-art");
+    expect(markup).toContain("先抛出一个是/不是/无关问题");
+    expect(markup).toContain("question-console");
+    expect(markup).toContain("发送提问");
+    expect(markup).toContain("side-tool-drawer");
+    expect(markup).toContain("auxiliary-rail");
+    expect(markup).toContain("aux-rail-header");
+  });
+
+  it("keeps persona status compact instead of rendering stage artwork in the room flow", () => {
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { origin: "http://localhost:5173" }, setTimeout: () => 0 }
+    });
+
+    const davMarkup = renderToStaticMarkup(
+      <RoomPage
+        room={{ ...makeSolvedRoom(), hostPersonaId: "dav", answerUnlocked: false, truthRevealed: false, status: "playing", settlement: undefined }}
+        playerId="player-host"
+        onBack={() => undefined}
+        onAsk={() => undefined}
+        onPin={() => undefined}
+        onReveal={() => undefined}
+        onRevealHint={() => undefined}
+        onRequestHint={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+    const guiguiMarkup = renderToStaticMarkup(
+      <RoomPage
+        room={{ ...makeSolvedRoom(), hostPersonaId: "guigui", answerUnlocked: false, truthRevealed: false, status: "playing", settlement: undefined }}
+        playerId="player-host"
+        onBack={() => undefined}
+        onAsk={() => undefined}
+        onPin={() => undefined}
+        onReveal={() => undefined}
+        onRevealHint={() => undefined}
+        onRequestHint={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+
+    expect(davMarkup).toContain("大V · 待提问");
+    expect(guiguiMarkup).toContain("龟龟 · 待提问");
+    expect(davMarkup).not.toContain("host-stage-art");
+    expect(guiguiMarkup).not.toContain("host-stage-art");
   });
 
   it("places the settlement action beside the invite action in the room topbar", () => {
@@ -358,7 +454,7 @@ describe("room UI settlement", () => {
       />
     );
 
-    expect(markup).toContain("score-section side-compact-section");
+    expect(markup).toContain("tool-drawer-section score-section");
     expect(markup).not.toContain("查看结算");
   });
 
@@ -384,11 +480,26 @@ describe("room UI settlement", () => {
       />
     );
 
-    expect(markup).toContain("side-summary-grid");
-    expect(markup).toContain("players-section side-compact-section");
-    expect(markup).toContain("score-section side-compact-section");
-    expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("side-summary-grid"));
-    expect(markup.indexOf("side-summary-grid")).toBeLessThan(markup.indexOf("调查卷宗"));
+    expect(markup).toContain("side-tool-drawer");
+    expect(markup).toContain("tool-drawer-section players-section");
+    expect(markup).toContain("tool-drawer-section score-section");
+    expect(markup).toContain("tool-drawer-section notes-section");
+    expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("side-tool-drawer"));
+    expect(markup.indexOf("side-tool-drawer")).toBeLessThan(markup.indexOf("调查卷宗"));
+  });
+
+  it("configures a distinct final-reasoning console state for guess mode", () => {
+    expect(getComposerModeConfig("question", false)).toEqual({
+      className: "question-console-question",
+      placeholder: "提出是 / 不是 / 无关问题...",
+      buttonLabel: "发送提问"
+    });
+    expect(getComposerModeConfig("guess", false)).toEqual({
+      className: "question-console-guess",
+      placeholder: "写下完整推理，命中真相后将解锁汤底...",
+      buttonLabel: "提交推理"
+    });
+    expect(getComposerModeConfig("guess", true).buttonLabel).toBe("判断中");
   });
 
   it("renders host judging feedback while the AI host is pending", () => {
@@ -518,12 +629,117 @@ describe("room UI settlement", () => {
 
     expect(markup).toContain("host-composer");
     expect(markup).toContain("host-tools");
+    expect(markup).toContain("host-assist-tray");
+    expect(markup).toContain("host-assist-actions");
     expect(markup.indexOf("host-composer")).toBeLessThan(markup.indexOf("host-tools"));
     expect(markup.indexOf("host-tools")).toBeLessThan(markup.indexOf("ask-box"));
     expect(markup.indexOf('aria-label="房主揭晓"')).toBeLessThan(markup.indexOf('aria-label="发放提示 (0/3)"'));
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain("host-tool-button");
     expect(markup).toContain("host-tool-count");
+  });
+
+  it("asks the host to confirm before revealing a hint", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false,
+      puzzle: {
+        ...makeSolvedRoom().puzzle,
+        hintCount: 3
+      }
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
+    );
+
+    expect(markup).toContain('aria-label="发放提示 (0/3)"');
+    expect(markup).toContain('aria-haspopup="dialog"');
+    expect(markup).toContain("host-hint-confirm-popover");
+    expect(markup).toContain('aria-label="确认发放提示"');
+    expect(markup).toContain("发放下一条提示给所有玩家？");
+    expect(markup).toContain("确认发放");
+  });
+
+  it("detects the latest revealed hint only when the hint count increases", () => {
+    expect(getNewHintNotice(0, [])).toBeNull();
+    expect(getNewHintNotice(1, ["注意镜子、狗叫声和劈柴声的关联"])).toBeNull();
+    expect(getNewHintNotice(1, ["注意镜子、狗叫声和劈柴声的关联", "思考父母行为前后矛盾"])).toEqual({
+      index: 2,
+      text: "思考父母行为前后矛盾"
+    });
+    expect(getNewHintNotice(1, ["注意镜子、狗叫声和劈柴声的关联", "   "])).toBeNull();
+  });
+
+  it("opens revealed hints from a separate history popover instead of expanding the tray", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false,
+      puzzle: {
+        ...makeSolvedRoom().puzzle,
+        hintCount: 4
+      },
+      hintsRevealed: 2,
+      revealedHints: ["注意镜子、狗叫声和劈柴声的关联", "思考父母行为前后矛盾"]
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} playerId="player-host" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
+    );
+
+    expect(markup).toContain("host-assist-tray");
+    expect(markup).toContain("host-hints-history-button");
+    expect(markup).toContain('aria-label="查看已发放提示 2"');
+    expect(markup).toContain("host-hints-popover");
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain("已发放提示 2");
+    expect(markup).toContain("提示 1：注意镜子、狗叫声和劈柴声的关联");
+    expect(markup).not.toContain("host-hints-disclosure");
+    expect(markup).not.toContain("<summary");
+    expect(markup.indexOf("host-log")).toBeLessThan(markup.indexOf("host-assist-tray"));
+    expect(markup.indexOf("host-assist-tray")).toBeLessThan(markup.indexOf("ask-box"));
+  });
+
+  it("lets non-host players view revealed hints without showing host hint controls", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      status: "playing" as const,
+      answerUnlocked: false,
+      truthRevealed: false,
+      puzzle: {
+        ...makeSolvedRoom().puzzle,
+        hintCount: 4
+      },
+      players: [
+        ...makeSolvedRoom().players,
+        {
+          id: "player-guest",
+          name: "玩家甲",
+          isHost: false,
+          joinedAt: "2026-06-23T00:03:00.000Z",
+          score: 0,
+          hits: 0,
+          bestDelta: 0
+        }
+      ],
+      hintsRevealed: 2,
+      revealedHints: ["注意镜子、狗叫声和劈柴声的关联", "思考父母行为前后矛盾"]
+    };
+
+    const markup = renderToStaticMarkup(
+      <HostPanel room={room} playerId="player-guest" onAsk={() => undefined} onPin={() => undefined} onReveal={() => undefined} onRevealHint={() => undefined} onRequestHint={() => undefined} />
+    );
+
+    expect(markup).toContain("host-hints-history-button");
+    expect(markup).toContain('aria-label="查看已发放提示 2"');
+    expect(markup).toContain("host-hints-popover");
+    expect(markup).toContain('aria-label="请求提示"');
+    expect(markup).not.toContain('aria-label="发放提示');
+    expect(markup).not.toContain('aria-label="房主揭晓"');
   });
 
   it("keeps the hint tool visible as disabled when a puzzle has no hints", () => {

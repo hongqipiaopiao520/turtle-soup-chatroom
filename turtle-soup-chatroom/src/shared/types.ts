@@ -4,6 +4,20 @@ export type RoomStatus = "waiting" | "playing" | "solved" | "closed";
 
 export type HostPersonaId = "xiaowai" | "dav" | "guigui";
 
+export type CriticSeverity = "none" | "low" | "medium" | "high";
+
+export type CriticRisk =
+  | "spoiler"
+  | "invalid_misuse"
+  | "progress_inflation"
+  | "style_boundary"
+  | "hallucination"
+  | "mode_violation"
+  | "parse_error"
+  | "critic_unavailable";
+
+export type CriticAction = "allow" | "strip_style" | "downgrade_progress" | "replace_with_fallback" | "manual_review";
+
 export type HostAnswerType =
   | "yes"
   | "no"
@@ -74,6 +88,24 @@ export interface Player {
   bestDelta: number;
 }
 
+export interface HostCriticReview {
+  id: string;
+  status: "passed" | "flagged" | "error";
+  severity: CriticSeverity;
+  action: CriticAction;
+  risks: CriticRisk[];
+  rationale: string;
+  suggestedAnswerType?: HostAnswerType;
+  suggestedAnswer?: string;
+  suggestedStyleText?: string;
+  suggestedProgress?: number;
+  suggestedCoveredPointIds?: string[];
+  confidence: number;
+  model?: string;
+  durationMs: number;
+  reviewedAt: string;
+}
+
 export interface HostAnswer {
   id: string;
   playerId: string;
@@ -89,10 +121,11 @@ export interface HostAnswer {
   pinned: boolean;
   coveredPointIds?: string[];
   coverageConfidence?: number;
+  criticReview?: HostCriticReview;
   createdAt: string;
 }
 
-export type PublicHostAnswer = Omit<HostAnswer, "coveredPointIds" | "coverageConfidence">;
+export type PublicHostAnswer = Omit<HostAnswer, "coveredPointIds" | "coverageConfidence" | "criticReview">;
 
 export interface HostPending {
   id: string;
