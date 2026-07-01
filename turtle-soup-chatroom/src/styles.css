@@ -428,18 +428,35 @@ select:focus-visible {
 .case-file-body h2 {
   margin: 0;
   color: #fff7df;
-  font-size: clamp(56px, 8.8vw, 116px);
-  line-height: 0.92;
+  font-size: clamp(40px, 6vw, 84px);
+  line-height: 0.96;
   letter-spacing: 0;
   text-shadow: 0 18px 52px rgba(0, 0, 0, 0.44);
 }
 
 .case-file-body p {
+  position: relative;
+  display: -webkit-box;
   max-width: 720px;
+  max-height: calc(1.58em * 6);
   margin: 20px 0 0;
+  overflow: hidden;
   color: #d7d0ba;
-  font-size: clamp(18px, 2vw, 24px);
-  line-height: 1.62;
+  font-size: clamp(16px, 1.45vw, 20px);
+  line-height: 1.58;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.case-file-body p::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2.4em;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(18, 24, 22, 0.92));
 }
 
 .case-desk-visual {
@@ -1520,6 +1537,11 @@ select:focus-visible {
 
   .case-file-body h2 {
     font-size: 34px;
+  }
+
+  .case-file-body p {
+    max-height: calc(1.58em * 4);
+    -webkit-line-clamp: 4;
   }
 
   .case-meta-grid,

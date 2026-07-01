@@ -81,6 +81,19 @@ describe("aiCritic", () => {
     });
   });
 
+  it("normalizes markdown and loose critic fields", () => {
+    const review = parseCriticResponse('```json\n{"status":"warning","severity":"高","action":"review","risks":["剧透风险","进度虚高"],"reason":"可能说多了","confidence":"0.66"}\n```');
+
+    expect(review).toMatchObject({
+      status: "flagged",
+      severity: "high",
+      action: "manual_review",
+      risks: ["spoiler", "progress_inflation"],
+      rationale: "可能说多了",
+      confidence: 0.66
+    });
+  });
+
   it("builds a prompt with truth, host answer, and review rules", () => {
     const messages = buildCriticPrompt(makeInput());
     const prompt = `${messages[0].content}\n${messages[1].content}`;

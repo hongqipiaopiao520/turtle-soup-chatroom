@@ -79,21 +79,80 @@ export function errorCriticReview(message: string, durationMs = 0): HostCriticRe
   }, durationMs);
 }
 
+function extractJsonText(raw: string) {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
+  if (fenced) return fenced.trim();
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return raw.slice(firstBrace, lastBrace + 1);
+  }
+  return raw;
+}
+
+function normalizeCriticStatus(value: unknown): HostCriticReview["status"] {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (["passed", "pass", "ok", "通过", "正常", "无问题"].includes(text)) return "passed";
+  if (["flagged", "flag", "warning", "warn", "risk", "风险", "警告", "需复核", "需要复核"].includes(text)) return "flagged";
+  return "error";
+}
+
+function normalizeSeverity(value: unknown): HostCriticReview["severity"] {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (["none", "无", "无风险"].includes(text)) return "none";
+  if (["medium", "mid", "中", "中等"].includes(text)) return "medium";
+  if (["high", "严重", "高", "高危"].includes(text)) return "high";
+  return "low";
+}
+
+function normalizeAction(value: unknown): HostCriticReview["action"] {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (["allow", "pass", "通过", "允许"].includes(text)) return "allow";
+  if (["strip_style", "stripstyle", "remove_style", "去掉风格", "去除风格", "删除风格"].includes(text)) return "strip_style";
+  if (["downgrade_progress", "lower_progress", "降低进度", "下调进度"].includes(text)) return "downgrade_progress";
+  if (["replace_with_fallback", "fallback", "safe_fallback", "安全兜底", "替换"].includes(text)) return "replace_with_fallback";
+  return "manual_review";
+}
+
+function normalizeRisk(value: unknown): HostCriticReview["risks"][number] | undefined {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (["spoiler", "leak", "泄露", "剧透", "汤底泄露", "剧透风险"].includes(text)) return "spoiler";
+  if (["invalid_misuse", "invalid", "误用invalid", "无效回答误用", "换个问法误用"].includes(text)) return "invalid_misuse";
+  if (["progress_inflation", "progress", "进度虚高", "进度过高", "进度膨胀"].includes(text)) return "progress_inflation";
+  if (["style_boundary", "style", "话术越界", "风格越界", "攻击玩家"].includes(text)) return "style_boundary";
+  if (["hallucination", "幻觉", "编造", "新增事实"].includes(text)) return "hallucination";
+  if (["mode_violation", "mode", "模式违规", "格式违规"].includes(text)) return "mode_violation";
+  if (["parse_error", "parse", "解析错误"].includes(text)) return "parse_error";
+  if (["critic_unavailable", "unavailable", "不可用"].includes(text)) return "critic_unavailable";
+  return undefined;
+}
+
+function normalizeCriticPayload(payload: unknown) {
+  const data = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
+  const status = normalizeCriticStatus(data.status ?? data.verdict ?? data.result);
+  const risks = Array.isArray(data.risks)
+    ? data.risks.map(normalizeRisk).filter((risk): risk is HostCriticReview["risks"][number] => Boolean(risk))
+    : [];
+  return {
+    status,
+    severity: normalizeSeverity(data.severity),
+    action: normalizeAction(data.action),
+    risks,
+    rationale: String(data.rationale ?? data.reason ?? data.comment ?? "").slice(0, 500),
+    suggestedAnswerType: data.suggestedAnswerType,
+    suggestedAnswer: typeof data.suggestedAnswer === "string" ? data.suggestedAnswer.slice(0, 240) : undefined,
+    suggestedStyleText: typeof data.suggestedStyleText === "string" ? data.suggestedStyleText.slice(0, 120) : undefined,
+    suggestedProgress: data.suggestedProgress,
+    suggestedCoveredPointIds: Array.isArray(data.suggestedCoveredPointIds) ? data.suggestedCoveredPointIds.map(String) : undefined,
+    confidence: clampConfidence(data.confidence)
+  };
+}
+
 export function parseCriticResponse(raw: string, options: { model?: string; durationMs?: number } = {}): HostCriticReview {
   try {
-    const parsed = CriticReviewSchema.safeParse(JSON.parse(raw));
-    if (!parsed.success) {
-      return baseReview({
-        status: "error",
-        severity: "low",
-        action: "manual_review",
-        risks: ["parse_error"],
-        rationale: "质检结果格式不正确，需要人工复核。",
-        confidence: 0,
-        ...(options.model ? { model: options.model } : {})
-      }, options.durationMs ?? 0);
-    }
-    const data = parsed.data;
+    const payload = JSON.parse(extractJsonText(raw));
+    const parsed = CriticReviewSchema.safeParse(payload);
+    const data = parsed.success ? parsed.data : normalizeCriticPayload(payload);
     return baseReview({
       ...data,
       risks: data.risks,

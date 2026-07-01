@@ -30,6 +30,16 @@ describe("layout CSS", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*animation:\s*none/s);
   });
 
+  it("keeps long homepage hero cases inside the case desk", () => {
+    expect(css).toMatch(/\.case-file-body h2\s*\{[^}]*font-size:\s*clamp\(40px,\s*6vw,\s*84px\)/s);
+    expect(css).toMatch(/\.case-file-body p\s*\{[^}]*display:\s*-webkit-box/s);
+    expect(css).toMatch(/\.case-file-body p\s*\{[^}]*-webkit-line-clamp:\s*6/s);
+    expect(css).toMatch(/\.case-file-body p\s*\{[^}]*max-height:\s*calc\(1\.58em \* 6\)/s);
+    expect(css).toMatch(/\.case-file-body p\s*\{[^}]*overflow:\s*hidden/s);
+    expect(css).toMatch(/\.case-file-body p::after\s*\{/);
+    expect(css).toMatch(/@media \(max-width:\s*620px\)[\s\S]*\.case-file-body p\s*\{[^}]*-webkit-line-clamp:\s*4/s);
+  });
+
   it("prioritizes the mobile side-panel chat area", () => {
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*order:\s*2/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.host-panel\s*\{[^}]*order:\s*3/);
