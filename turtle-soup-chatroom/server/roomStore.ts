@@ -193,7 +193,10 @@ export function createRoom(
     hostLog: [],
     chatMessages: [],
     caseNotes: [],
-    questionLimit: options.questionLimit === 0 ? 0 : 20,
+    questionLimit:
+      typeof options.questionLimit === "number" && Number.isFinite(options.questionLimit)
+        ? Math.max(0, Math.round(options.questionLimit))
+        : 20,
     questionsUsed: 0,
     progress: 0,
     answerUnlocked: false,

@@ -40,6 +40,24 @@ describe("layout CSS", () => {
     expect(css).toMatch(/@media \(max-width:\s*620px\)[\s\S]*\.case-file-body p\s*\{[^}]*-webkit-line-clamp:\s*4/s);
   });
 
+  it("keeps the homepage hero surface readable and metadata secondary", () => {
+    expect(css).toMatch(/\.case-file-copy\s*\{[^}]*max-width:\s*min\(720px,\s*62%\)/s);
+    expect(css).toMatch(/\.case-file-body p\s*\{[^}]*color:\s*#f3ecd8/s);
+    expect(css).toMatch(/\.case-file-body p\s*\{[^}]*font-weight:\s*700/s);
+    expect(css).toMatch(/\.case-file-body p\s*\{[^}]*text-shadow:\s*0 10px 30px rgba\(0,\s*0,\s*0,\s*0\.42\)/s);
+    expect(css).toMatch(/\.case-meta-grid\s*\{[^}]*opacity:\s*0\.72/s);
+    expect(css).toMatch(/\.case-meta-grid span\s*\{[^}]*min-height:\s*30px/s);
+    expect(css).toMatch(/\.case-meta-grid span\s*\{[^}]*font-size:\s*13px/s);
+    expect(css).toMatch(/@media \(max-width:\s*900px\)[\s\S]*\.case-file-copy\s*\{[^}]*max-width:\s*100%/s);
+  });
+
+  it("keeps the opening director compact and card based", () => {
+    expect(css).toMatch(/\.opening-director-panel\s*\{/);
+    expect(css).toMatch(/\.opening-director-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/s);
+    expect(css).toMatch(/\.opening-director-plans\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/s);
+    expect(css).toMatch(/@media \(max-width:\s*900px\)[\s\S]*\.opening-director-plans\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  });
+
   it("prioritizes the mobile side-panel chat area", () => {
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.side-panel\s*\{[^}]*order:\s*2/);
     expect(css).toMatch(/@media \(max-width:\s*760px\)[\s\S]*\.host-panel\s*\{[^}]*order:\s*3/);

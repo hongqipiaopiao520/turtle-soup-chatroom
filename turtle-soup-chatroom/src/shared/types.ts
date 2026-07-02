@@ -41,6 +41,24 @@ export interface Puzzle {
   createdAt: string;
 }
 
+export interface PuzzleAiProfile {
+  themes: string[];
+  moods: string[];
+  twistTypes: string[];
+  contentWarnings: string[];
+  suitableFor: string[];
+  intensity: {
+    gore: number;
+    horror: number;
+    sadness: number;
+    absurdity: number;
+  };
+  spoilerFreePitch: string;
+  estimatedQuestions: number;
+  profileVersion: number;
+  generatedAt: string;
+}
+
 export interface SolutionPointDefinition {
   id: string;
   label: string;
@@ -67,6 +85,48 @@ export interface ManagedPuzzle extends Puzzle {
   reviewedAt?: string;
   publishedAt?: string;
   updatedAt: string;
+  aiProfile?: PuzzleAiProfile;
+}
+
+export interface OpeningDirectorIntent {
+  rawText: string;
+  themes: string[];
+  moods: string[];
+  avoidThemes: string[];
+  preferredDifficulty?: Difficulty;
+  preferredHostPersonaId?: HostPersonaId;
+  maxGore?: number;
+  playerCount?: number;
+  desiredLength?: "short" | "standard" | "long";
+  confidence: number;
+  source: "ai" | "fallback";
+}
+
+export type OpeningDirectorSource = "profile-score" | "ai-intent-profile-score" | "fallback";
+
+export interface OpeningDirectorPlan {
+  id: string;
+  puzzle: PublicPuzzle;
+  title: string;
+  reason: string;
+  matchSummary: string;
+  chips: string[];
+  contentIntensity: string;
+  hostPersonaId: HostPersonaId;
+  questionLimit: number;
+  confidence: "high" | "medium" | "low";
+  source: OpeningDirectorSource;
+}
+
+export interface OpeningDirectorRequest {
+  prompt: string;
+  limit?: number;
+}
+
+export interface OpeningDirectorResponse {
+  intent: OpeningDirectorIntent;
+  plans: OpeningDirectorPlan[];
+  fallbackUsed: boolean;
 }
 
 export type PuzzleSort = "hot" | "latest" | "rating";

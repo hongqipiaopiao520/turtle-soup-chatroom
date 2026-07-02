@@ -45,7 +45,7 @@ export function registerSocketHandlers(io: Server, dependencies: SocketHandlerDe
       try {
         const puzzle = getPublishedPuzzleForRoom(dependencies.puzzleRepository, puzzleId);
         const session = createRoom(puzzle, playerName, {
-          questionLimit: questionLimit === 0 ? 0 : undefined,
+          questionLimit: typeof questionLimit === "number" ? questionLimit : undefined,
           hostPersonaId
         });
         const { room, playerId } = session;

@@ -1,5 +1,5 @@
 import type { AppDatabase } from "./database";
-import type { Difficulty, ManagedPuzzle, Puzzle, PuzzleStatus } from "../../src/shared/types";
+import type { Difficulty, ManagedPuzzle, PublicPuzzle, PuzzleAiProfile, PuzzleStatus } from "../../src/shared/types";
 
 export interface ManagedPuzzleUpdate {
   title: string;
@@ -39,17 +39,21 @@ interface PuzzleRow {
   quality_summary: string;
   reviewed_at?: string | null;
   published_at?: string | null;
+  ai_profile_json?: string | null;
+  ai_profile_version: number;
+  ai_profile_generated_at?: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface PuzzleRepository {
   findById(id: string): ManagedPuzzle | undefined;
-  listPublished(): Puzzle[];
+  listPublished(): PublicPuzzle[];
   listManaged(status?: PuzzleStatus): ManagedPuzzle[];
   upsertManaged(puzzle: ManagedPuzzle): ManagedPuzzle;
   updateManaged(id: string, input: ManagedPuzzleUpdate): ManagedPuzzle;
   updateTags(id: string, tags: string[]): ManagedPuzzle;
+  updateAiProfile(id: string, profile: PuzzleAiProfile): ManagedPuzzle;
   deleteManaged(id: string): ManagedPuzzle;
   publish(id: string): ManagedPuzzle;
   reject(id: string): ManagedPuzzle;
@@ -61,6 +65,21 @@ function parseJsonArray(value: string): string[] {
     return Array.isArray(parsed) ? parsed.map(String) : [];
   } catch {
     return [];
+  }
+}
+
+function parseAiProfile(row: PuzzleRow): PuzzleAiProfile | undefined {
+  if (!row.ai_profile_json) return undefined;
+  try {
+    const parsed = JSON.parse(row.ai_profile_json) as PuzzleAiProfile;
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.themes)) return undefined;
+    return {
+      ...parsed,
+      profileVersion: row.ai_profile_version || parsed.profileVersion || 0,
+      generatedAt: row.ai_profile_generated_at ?? parsed.generatedAt ?? row.updated_at
+    };
+  } catch {
+    return undefined;
   }
 }
 
@@ -88,23 +107,23 @@ function toManagedPuzzle(row: PuzzleRow): ManagedPuzzle {
     qualitySummary: row.quality_summary,
     reviewedAt: row.reviewed_at ?? undefined,
     publishedAt: row.published_at ?? undefined,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    aiProfile: parseAiProfile(row)
   };
 }
 
-function toPublicPuzzle(puzzle: ManagedPuzzle): Puzzle {
+function toPublicPuzzle(puzzle: ManagedPuzzle): PublicPuzzle {
   return {
     id: puzzle.id,
     title: puzzle.title,
     surface: puzzle.surface,
-    truth: puzzle.truth,
-    solutionPoints: puzzle.solutionPoints,
     difficulty: puzzle.difficulty,
     tags: puzzle.tags,
     author: puzzle.author,
     rating: puzzle.rating,
     plays: puzzle.plays,
-    createdAt: puzzle.createdAt
+    createdAt: puzzle.createdAt,
+    hintCount: puzzle.hints.length
   };
 }
 
@@ -153,6 +172,9 @@ export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
       quality_summary,
       reviewed_at,
       published_at,
+      ai_profile_json,
+      ai_profile_version,
+      ai_profile_generated_at,
       created_at,
       updated_at
     ) values (
@@ -177,6 +199,9 @@ export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
       @qualitySummary,
       @reviewedAt,
       @publishedAt,
+      @aiProfileJson,
+      @aiProfileVersion,
+      @aiProfileGeneratedAt,
       @createdAt,
       @updatedAt
     )
@@ -201,6 +226,9 @@ export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
       quality_summary = excluded.quality_summary,
       reviewed_at = excluded.reviewed_at,
       published_at = excluded.published_at,
+      ai_profile_json = excluded.ai_profile_json,
+      ai_profile_version = excluded.ai_profile_version,
+      ai_profile_generated_at = excluded.ai_profile_generated_at,
       updated_at = excluded.updated_at
   `);
 
@@ -241,6 +269,9 @@ export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
         qualitySummary: puzzle.qualitySummary,
         reviewedAt: puzzle.reviewedAt ?? null,
         publishedAt: puzzle.publishedAt ?? null,
+        aiProfileJson: puzzle.aiProfile ? JSON.stringify(puzzle.aiProfile) : null,
+        aiProfileVersion: puzzle.aiProfile?.profileVersion ?? 0,
+        aiProfileGeneratedAt: puzzle.aiProfile?.generatedAt ?? null,
         createdAt: puzzle.createdAt,
         updatedAt: puzzle.updatedAt
       });
@@ -271,6 +302,14 @@ export function createPuzzleRepository(db: AppDatabase): PuzzleRepository {
       return this.upsertManaged({
         ...existing,
         tags,
+        updatedAt: nextTimestampAfter(existing.updatedAt)
+      });
+    },
+    updateAiProfile(id: string, profile: PuzzleAiProfile) {
+      const existing = requirePuzzle(findById(id), id);
+      return this.upsertManaged({
+        ...existing,
+        aiProfile: profile,
         updatedAt: nextTimestampAfter(existing.updatedAt)
       });
     },

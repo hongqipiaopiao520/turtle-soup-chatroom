@@ -14,7 +14,7 @@ import { HomePage } from "./components/HomePage";
 import { PuzzleDetail } from "./components/PuzzleDetail";
 import { RoomPage } from "./components/RoomPage";
 import { publicSeedPuzzles } from "./data/seedPuzzles";
-import type { HostPersonaId, PublicPuzzle } from "./shared/types";
+import type { HostPersonaId, OpeningDirectorPlan, PublicPuzzle } from "./shared/types";
 
 type View =
   | { name: "home" }
@@ -22,7 +22,14 @@ type View =
   | { name: "room" };
 
 type NameRequest =
-  | { kind: "create"; puzzle: PublicPuzzle; unlimitedQuestions: boolean }
+  | {
+      kind: "create";
+      puzzle: PublicPuzzle;
+      unlimitedQuestions: boolean;
+      hostPersonaId?: HostPersonaId;
+      questionLimit?: number;
+      source?: "manual" | "opening-director";
+    }
   | { kind: "join"; roomId: string };
 
 const hostPersonaOptions: { id: HostPersonaId; name: string; role: string; line: string; image: string }[] = [
@@ -141,6 +148,17 @@ function PlayerApp() {
     setNameRequest({ kind: "create", puzzle, unlimitedQuestions: false });
   }
 
+  function startDirectedRoom(plan: OpeningDirectorPlan) {
+    setNameRequest({
+      kind: "create",
+      puzzle: plan.puzzle,
+      unlimitedQuestions: plan.questionLimit === 0,
+      questionLimit: plan.questionLimit,
+      hostPersonaId: plan.hostPersonaId,
+      source: "opening-director"
+    });
+  }
+
   function submitName(playerName: string, options: { unlimitedQuestions?: boolean; hostPersonaId?: HostPersonaId } = {}) {
     const trimmedName = playerName.trim() || "访客";
     if (!nameRequest) return;
@@ -148,8 +166,8 @@ function PlayerApp() {
     if (nameRequest.kind === "create") {
       setPendingPuzzle(nameRequest.puzzle);
       roomSocket.createRoom(nameRequest.puzzle, trimmedName, {
-        questionLimit: options.unlimitedQuestions ? 0 : undefined,
-        hostPersonaId: options.hostPersonaId
+        questionLimit: options.unlimitedQuestions ? 0 : nameRequest.questionLimit,
+        hostPersonaId: options.hostPersonaId ?? nameRequest.hostPersonaId
       });
     } else {
       roomSocket.joinRoom(nameRequest.roomId, trimmedName);
@@ -208,6 +226,7 @@ function PlayerApp() {
           setRoomRoute(session.roomId);
           setView({ name: "room" });
         }}
+        onStartDirectedPlan={startDirectedRoom}
       />
     </>
   );
@@ -226,7 +245,9 @@ export function NameDialog({
   const [unlimitedQuestions, setUnlimitedQuestions] = useState(
     request.kind === "create" ? request.unlimitedQuestions : false
   );
-  const [hostPersonaId, setHostPersonaId] = useState<HostPersonaId>("xiaowai");
+  const [hostPersonaId, setHostPersonaId] = useState<HostPersonaId>(
+    request.kind === "create" ? request.hostPersonaId ?? "xiaowai" : "xiaowai"
+  );
   const actionLabel = request.kind === "create" ? "创建房间" : "加入房间";
   const dialogTitle = request.kind === "create" ? "开案登记" : "加入房间";
   const caseTitle = request.kind === "create" ? request.puzzle.title : `房间 ${request.roomId}`;
@@ -258,6 +279,12 @@ export function NameDialog({
           <strong>{caseTitle}</strong>
           <p>{caseSurface}</p>
         </div>
+
+        {request.kind === "create" && request.source === "opening-director" && (
+          <div className="name-dialog-agent-strip">
+            AI 开局导演已配好主持人和问数，确认昵称后开局。
+          </div>
+        )}
 
         <label className="name-dialog-field">
           <span><UserRound size={15} /> 玩家席位</span>

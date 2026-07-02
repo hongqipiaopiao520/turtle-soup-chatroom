@@ -125,6 +125,61 @@ describe("getPublishedPuzzleForRoom", () => {
     );
   });
 
+  it("creates rooms with a requested finite question limit", () => {
+    const roomEmit = vi.fn();
+    const savedRooms: Array<ReturnType<typeof createRoom>["room"]> = [];
+    const io = {
+      on: vi.fn(),
+      to: vi.fn(() => ({ emit: roomEmit }))
+    };
+    const socketHandlers = new Map<string, (...args: unknown[]) => unknown>();
+    const socket = {
+      on: vi.fn((event: string, handler: (...args: unknown[]) => unknown) => {
+        socketHandlers.set(event, handler);
+      }),
+      emit: vi.fn(),
+      join: vi.fn(),
+      leave: vi.fn()
+    };
+    const puzzle = {
+      ...seedPuzzles[0],
+      status: "published" as const,
+      hints: [],
+      estimatedMinutes: 15,
+      qualityScore: 80,
+      qualityIssues: [],
+      qualitySummary: "可发布",
+      publishedAt: "2026-06-23T00:00:00.000Z",
+      updatedAt: "2026-06-23T00:00:00.000Z"
+    };
+
+    registerSocketHandlers(io as never, {
+      puzzleRepository: { findById: vi.fn(() => puzzle) } as never,
+      roomRepository: {
+        save: vi.fn((room: ReturnType<typeof createRoom>["room"]) => {
+          savedRooms.push(room);
+        }),
+        remove: vi.fn()
+      } as never
+    });
+    const connectionHandler = io.on.mock.calls[0][1] as (nextSocket: typeof socket) => void;
+    connectionHandler(socket);
+
+    socketHandlers.get("room:create")?.({
+      puzzleId: puzzle.id,
+      playerName: "房主",
+      questionLimit: 12
+    });
+
+    expect(savedRooms[0].questionLimit).toBe(12);
+    expect(socket.emit).toHaveBeenCalledWith(
+      "room:session",
+      expect.objectContaining({
+        room: expect.objectContaining({ questionLimit: 12 })
+      })
+    );
+  });
+
   it("broadcasts host pending state to the whole room before the AI answer completes", async () => {
     const { room, playerId } = createRoom(seedPuzzles[0], "房主", { hostPersonaId: "dav" });
     let resolveHost!: (decision: Awaited<ReturnType<typeof askHost>>) => void;

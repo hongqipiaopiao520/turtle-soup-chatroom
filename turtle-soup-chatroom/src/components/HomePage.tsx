@@ -1,8 +1,9 @@
-import { FileSearch, Play, Search, Shuffle, Sparkles, Users } from "lucide-react";
+import { Bot, FileSearch, Loader2, Play, Search, Shuffle, Sparkles, Users } from "lucide-react";
 import { useMemo, useState } from "react";
+import { fetchOpeningDirectorPlans } from "../client/openingDirector";
 import type { StoredRoomSession } from "../client/roomSessionMemory";
 import { collectTags, filterPuzzles } from "../shared/puzzleFilters";
-import type { Difficulty, PublicPuzzle, PuzzleSort } from "../shared/types";
+import type { Difficulty, OpeningDirectorPlan, PublicPuzzle, PuzzleSort } from "../shared/types";
 import { PuzzleCard } from "./PuzzleCard";
 import { SelectField } from "./ui";
 
@@ -44,8 +45,9 @@ function pickFeaturedPuzzle(puzzles: PublicPuzzle[]): PublicPuzzle | undefined {
   })[0];
 }
 
-function formatFeaturedCaseCode(puzzle?: PublicPuzzle): string {
-  return puzzle ? "CASE-001" : "CASE-EMPTY";
+function formatFeaturedCaseCode(index: number): string {
+  if (index < 0) return "CASE-EMPTY";
+  return `CASE-${String(index + 1).padStart(3, "0")}`;
 }
 
 export function HomePage({
@@ -53,25 +55,48 @@ export function HomePage({
   recentRoom,
   onOpenPuzzle,
   onRandomPuzzle,
-  onResumeRoom
+  onResumeRoom,
+  onStartDirectedPlan
 }: {
   puzzles: PublicPuzzle[];
   recentRoom?: StoredRoomSession | null;
   onOpenPuzzle: (puzzle: PublicPuzzle) => void;
   onRandomPuzzle: () => void;
   onResumeRoom?: (session: StoredRoomSession) => void;
+  onStartDirectedPlan?: (plan: OpeningDirectorPlan) => void;
 }) {
   const [query, setQuery] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty | "all">("all");
   const [tag, setTag] = useState<string | "all">("all");
   const [sort, setSort] = useState<PuzzleSort>("hot");
+  const [directorPrompt, setDirectorPrompt] = useState("涉及父母，反转强一点，不要太血腥");
+  const [directorPlans, setDirectorPlans] = useState<OpeningDirectorPlan[]>([]);
+  const [directorError, setDirectorError] = useState("");
+  const [isDirectorLoading, setIsDirectorLoading] = useState(false);
 
   const tags = useMemo(() => collectTags(availablePuzzles), [availablePuzzles]);
   const featuredPuzzle = useMemo(() => pickFeaturedPuzzle(availablePuzzles), [availablePuzzles]);
+  const featuredPuzzleIndex = featuredPuzzle ? availablePuzzles.findIndex((puzzle) => puzzle.id === featuredPuzzle.id) : -1;
   const visiblePuzzles = useMemo(
     () => filterPuzzles(availablePuzzles, { query, difficulty, tag, sort }),
     [availablePuzzles, query, difficulty, tag, sort]
   );
+
+  async function generateOpeningPlans() {
+    const prompt = directorPrompt.trim();
+    if (!prompt) return;
+    setIsDirectorLoading(true);
+    setDirectorError("");
+    try {
+      const response = await fetchOpeningDirectorPlans({ prompt, limit: 3 });
+      setDirectorPlans(response.plans);
+    } catch (error) {
+      setDirectorError(error instanceof Error ? error.message : "开局导演暂时不可用");
+      setDirectorPlans([]);
+    } finally {
+      setIsDirectorLoading(false);
+    }
+  }
 
   return (
     <main className="app-shell">
@@ -101,10 +126,10 @@ export function HomePage({
           </div>
           <div className="case-file-header">
             <span className="panel-kicker"><FileSearch size={14} /> 今日案件桌</span>
-            <span className="case-file-code">{formatFeaturedCaseCode(featuredPuzzle)}</span>
+            <span className="case-file-code">{formatFeaturedCaseCode(featuredPuzzleIndex)}</span>
           </div>
           <div className="case-file-body">
-            <div>
+            <div className="case-file-copy">
               <h2 id="home-hero-title">{featuredPuzzle?.title ?? "等待新案件"}</h2>
               <p>{featuredPuzzle?.surface ?? "题库为空时，这里会显示下一份可推理的案件档案。"}</p>
             </div>
@@ -154,6 +179,61 @@ export function HomePage({
             ))}
           </div>
         </aside>
+      </section>
+
+      <section className="opening-director-panel" aria-labelledby="opening-director-title">
+        <div className="opening-director-head">
+          <div>
+            <span className="panel-kicker"><Bot size={14} /> AI 开局导演</span>
+            <h2 id="opening-director-title">说出想玩的感觉，我来配题、主持和问数。</h2>
+          </div>
+        </div>
+        <form
+          className="opening-director-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void generateOpeningPlans();
+          }}
+        >
+          <input
+            value={directorPrompt}
+            onChange={(event) => setDirectorPrompt(event.target.value)}
+            maxLength={300}
+            placeholder="比如：涉及父母，反转强一点，不要太血腥"
+          />
+          <button className="primary-button" type="submit" disabled={isDirectorLoading}>
+            {isDirectorLoading ? <Loader2 size={16} /> : <Sparkles size={16} />}
+            生成开局方案
+          </button>
+        </form>
+        <div className="opening-director-examples" aria-label="示例偏好">
+          {["新手局，别太长", "大V主持，压迫感强一点", "血腥一点，但不要恶心"].map((example) => (
+            <button type="button" key={example} onClick={() => setDirectorPrompt(example)}>{example}</button>
+          ))}
+        </div>
+        {directorError && <p className="opening-director-error">{directorError}</p>}
+        {directorPlans.length > 0 && (
+          <div className="opening-director-plans">
+            {directorPlans.map((plan) => (
+              <article className="opening-plan-card" key={plan.id}>
+                <span>{plan.title}</span>
+                <h3>{plan.puzzle.title}</h3>
+                <p>{plan.reason}</p>
+                <div className="opening-plan-chips">
+                  {plan.chips.map((chip) => <small key={chip}>{chip}</small>)}
+                </div>
+                <dl>
+                  <div><dt>主持</dt><dd>{plan.hostPersonaId === "dav" ? "大V" : plan.hostPersonaId === "guigui" ? "龟龟" : "小歪"}</dd></div>
+                  <div><dt>问数</dt><dd>{plan.questionLimit === 0 ? "不限" : `${plan.questionLimit} 问`}</dd></div>
+                  <div><dt>强度</dt><dd>{plan.contentIntensity}</dd></div>
+                </dl>
+                <button className="primary-button" type="button" onClick={() => onStartDirectedPlan?.(plan)}>
+                  <Play size={16} /> 开这局
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="toolbar">

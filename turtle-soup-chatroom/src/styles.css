@@ -343,6 +343,135 @@ select:focus-visible {
   background: transparent;
 }
 
+.opening-director-panel {
+  border: 1px solid rgba(221, 205, 158, 0.14);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 16% 8%, rgba(216, 168, 79, 0.12), transparent 26%),
+    radial-gradient(circle at 86% 18%, rgba(95, 140, 134, 0.11), transparent 30%),
+    rgba(12, 18, 16, 0.72);
+  margin-top: 14px;
+  padding: 18px;
+}
+
+.opening-director-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.opening-director-head h2 {
+  max-width: 680px;
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.opening-director-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.opening-director-form input {
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(2, 4, 4, 0.54);
+  color: var(--text);
+  font: inherit;
+  padding: 0 14px;
+}
+
+.opening-director-examples,
+.opening-plan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opening-director-examples {
+  margin-top: 12px;
+}
+
+.opening-director-examples button,
+.opening-plan-chips small {
+  border: 1px solid rgba(126, 163, 147, 0.22);
+  border-radius: 999px;
+  background: rgba(126, 163, 147, 0.08);
+  color: var(--muted);
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.opening-director-examples button {
+  cursor: pointer;
+}
+
+.opening-director-plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.opening-plan-card {
+  display: grid;
+  gap: 10px;
+  min-height: 250px;
+  border: 1px solid rgba(221, 205, 158, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(21, 27, 27, 0.82), rgba(5, 7, 7, 0.66)),
+    rgba(4, 7, 7, 0.58);
+  padding: 16px;
+}
+
+.opening-plan-card > span {
+  color: var(--orange);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.opening-plan-card h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.opening-plan-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.opening-plan-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.opening-plan-card dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.opening-plan-card dd {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-weight: 900;
+}
+
+.opening-director-error {
+  color: #f0a4a4;
+  font-weight: 800;
+}
+
 .home-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(360px, 0.88fr);
@@ -422,7 +551,11 @@ select:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: end;
-  gap: 18px;
+  gap: 14px;
+}
+
+.case-file-copy {
+  max-width: min(720px, 62%);
 }
 
 .case-file-body h2 {
@@ -441,9 +574,11 @@ select:focus-visible {
   max-height: calc(1.58em * 6);
   margin: 20px 0 0;
   overflow: hidden;
-  color: #d7d0ba;
+  color: #f3ecd8;
   font-size: clamp(16px, 1.45vw, 20px);
+  font-weight: 700;
   line-height: 1.58;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.42);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 6;
 }
@@ -559,27 +694,28 @@ select:focus-visible {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  opacity: 0.72;
 }
 
 .case-meta-grid span {
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
-  min-height: 42px;
+  gap: 6px;
+  min-height: 30px;
   border: 1px solid rgba(221, 205, 158, 0.16);
   border-radius: 999px;
-  background: rgba(5, 7, 7, 0.34);
-  color: #f3ecd8;
-  font-size: 20px;
+  background: rgba(5, 7, 7, 0.22);
+  color: #d6e4da;
+  font-size: 13px;
   font-weight: 800;
-  padding: 8px 12px;
-  backdrop-filter: blur(10px);
+  padding: 4px 8px;
+  backdrop-filter: blur(6px);
 }
 
 .case-meta-grid small {
-  color: var(--muted);
-  font-size: 12px;
+  color: rgba(168, 173, 154, 0.8);
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -1480,6 +1616,8 @@ select:focus-visible {
   .toolbar,
   .home-grid,
   .home-hero,
+  .opening-director-form,
+  .opening-director-plans,
   .admin-import-panel,
   .admin-import-form,
   .admin-file-import-form,
@@ -1504,8 +1642,16 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .case-file-copy {
+    max-width: 100%;
+  }
+
   .case-meta-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .opening-director-plans {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1685,6 +1831,19 @@ select:focus-visible {
   margin: 0;
   color: #d8d4c0;
   line-height: 1.6;
+}
+
+.name-dialog-agent-strip {
+  border: 1px solid rgba(216, 168, 79, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(216, 168, 79, 0.12), rgba(95, 140, 134, 0.06)),
+    rgba(7, 11, 11, 0.5);
+  color: #f4dca0;
+  font-weight: 800;
+  line-height: 1.45;
+  margin-top: 10px;
+  padding: 10px 12px;
 }
 
 .name-dialog label {

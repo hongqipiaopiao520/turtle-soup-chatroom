@@ -2,13 +2,19 @@ import cors from "cors";
 import express from "express";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { z } from "zod";
 import { createAdminPuzzleRouter } from "./adminPuzzleRoutes";
 import { createAiHostHarnessRouter } from "./aiHostHarnessRoutes";
+import { createOpeningDirectorPlans } from "./openingDirector";
 import { getRoom } from "./roomStore";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
 import type { RoomRepository } from "./storage/roomRepository";
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || "24mb";
+const OpeningPlansSchema = z.object({
+  prompt: z.string().trim().min(1).max(300),
+  limit: z.number().int().min(1).max(3).optional()
+});
 
 export function getAllowedOrigins() {
   return (process.env.ALLOWED_ORIGINS || "")
@@ -31,7 +37,7 @@ export function buildCorsOptions() {
 }
 
 export function listPublicPuzzles(puzzleRepository: PuzzleRepository) {
-  return puzzleRepository.listPublished().map(({ truth, ...publicPuzzle }) => publicPuzzle);
+  return puzzleRepository.listPublished();
 }
 
 export function getClientAppAssets(root = process.cwd(), nodeEnv = process.env.NODE_ENV) {
@@ -71,6 +77,19 @@ export function createApp(puzzleRepository: PuzzleRepository, roomRepository?: R
 
   app.get("/api/puzzles", (_request, response) => {
     response.json(listPublicPuzzles(puzzleRepository));
+  });
+
+  app.post("/api/agent/opening-plans", async (request, response) => {
+    try {
+      const parsed = OpeningPlansSchema.parse(request.body);
+      response.json(await createOpeningDirectorPlans({
+        prompt: parsed.prompt,
+        puzzles: puzzleRepository.listManaged("published"),
+        limit: parsed.limit
+      }));
+    } catch (error) {
+      response.status(400).json({ message: error instanceof Error ? error.message : "开局导演生成失败" });
+    }
   });
 
   app.get("/share/room/:roomId", (request, response) => {

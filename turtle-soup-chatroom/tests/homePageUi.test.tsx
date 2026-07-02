@@ -74,10 +74,43 @@ describe("HomePage", () => {
 
   it("renders a clean sequential case code for the featured puzzle", () => {
     const markup = renderToStaticMarkup(
-      <HomePage puzzles={publicSeedPuzzles} onOpenPuzzle={() => undefined} onRandomPuzzle={() => undefined} />
+      <HomePage
+        puzzles={[
+          { ...publicSeedPuzzles[0], plays: 999, rating: 9.5 },
+          { ...publicSeedPuzzles[1], plays: 1, rating: 6.1 }
+        ]}
+        onOpenPuzzle={() => undefined}
+        onRandomPuzzle={() => undefined}
+      />
     );
 
     expect(markup).toContain("CASE-001");
     expect(markup).not.toContain("CASE-COLD-C");
+  });
+
+  it("uses the featured puzzle position for the case code instead of always 001", () => {
+    const markup = renderToStaticMarkup(
+      <HomePage
+        puzzles={[
+          { ...publicSeedPuzzles[0], plays: 1, rating: 6.1 },
+          { ...publicSeedPuzzles[1], plays: 999, rating: 9.2 }
+        ]}
+        onOpenPuzzle={() => undefined}
+        onRandomPuzzle={() => undefined}
+      />
+    );
+
+    expect(markup).toContain("CASE-002");
+    expect(markup).not.toContain("CASE-001");
+  });
+
+  it("renders a compact AI opening director entry", () => {
+    const markup = renderToStaticMarkup(
+      <HomePage puzzles={publicSeedPuzzles} onOpenPuzzle={() => undefined} onRandomPuzzle={() => undefined} />
+    );
+
+    expect(markup).toContain("AI 开局导演");
+    expect(markup).toContain("涉及父母，反转强一点，不要太血腥");
+    expect(markup).toContain("生成开局方案");
   });
 });

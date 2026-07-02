@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { HostAnswer, HostCriticReview, HostPersonaId, Puzzle } from "../src/shared/types";
+import type { HostAnswer, HostAnswerType, HostCriticReview, HostPersonaId, Puzzle } from "../src/shared/types";
 import { parseSolutionPointDefinitions } from "./puzzleImporter";
 
 const criticRisks = [
@@ -127,6 +127,20 @@ function normalizeRisk(value: unknown): HostCriticReview["risks"][number] | unde
   return undefined;
 }
 
+function normalizeAnswerType(value: unknown): HostAnswerType | undefined {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (["yes", "no", "irrelevant", "partial", "invalid", "solved", "unsolved"].includes(text)) {
+    return text as HostAnswerType;
+  }
+  return undefined;
+}
+
+function normalizeProgress(value: unknown) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  return Math.max(0, Math.min(100, numeric));
+}
+
 function normalizeCriticPayload(payload: unknown) {
   const data = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
   const status = normalizeCriticStatus(data.status ?? data.verdict ?? data.result);
@@ -139,10 +153,10 @@ function normalizeCriticPayload(payload: unknown) {
     action: normalizeAction(data.action),
     risks,
     rationale: String(data.rationale ?? data.reason ?? data.comment ?? "").slice(0, 500),
-    suggestedAnswerType: data.suggestedAnswerType,
+    suggestedAnswerType: normalizeAnswerType(data.suggestedAnswerType),
     suggestedAnswer: typeof data.suggestedAnswer === "string" ? data.suggestedAnswer.slice(0, 240) : undefined,
     suggestedStyleText: typeof data.suggestedStyleText === "string" ? data.suggestedStyleText.slice(0, 120) : undefined,
-    suggestedProgress: data.suggestedProgress,
+    suggestedProgress: normalizeProgress(data.suggestedProgress),
     suggestedCoveredPointIds: Array.isArray(data.suggestedCoveredPointIds) ? data.suggestedCoveredPointIds.map(String) : undefined,
     confidence: clampConfidence(data.confidence)
   };

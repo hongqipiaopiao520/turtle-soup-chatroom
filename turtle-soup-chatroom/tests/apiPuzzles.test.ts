@@ -54,8 +54,9 @@ describe("/api/puzzles", () => {
     expect(body).toHaveLength(1);
     expect(body?.[0].id).toBe("rain-platform");
     expect(body?.[0].surface).toBe(seedPuzzles[0].surface);
-    expect(body?.[0].solutionPoints).toEqual(seedPuzzles[0].solutionPoints);
     expect(body?.[0]).not.toHaveProperty("truth");
+    expect(body?.[0]).not.toHaveProperty("solutionPoints");
+    expect(body?.[0]).not.toHaveProperty("aiProfile");
   });
 
   it("detects the built SPA and limits fallback serving to client routes", () => {

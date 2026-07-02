@@ -27,4 +27,24 @@ describe("NameDialog", () => {
     expect(markup).toContain("普通提问不限次数");
     expect(markup).toContain("name-dialog-limit");
   });
+
+  it("renders opening director context and preset host choice", () => {
+    const markup = renderToStaticMarkup(
+      <NameDialog
+        request={{
+          kind: "create",
+          puzzle: publicSeedPuzzles[0],
+          unlimitedQuestions: false,
+          hostPersonaId: "dav",
+          questionLimit: 12,
+          source: "opening-director"
+        }}
+        onCancel={() => undefined}
+        onSubmit={() => undefined}
+      />
+    );
+
+    expect(markup).toContain("AI 开局导演已配好主持人和问数");
+    expect(markup).toMatch(/<input[^>]*checked=""[^>]*value="dav"/);
+  });
 });

@@ -50,5 +50,13 @@ export const migrations: Migration[] = [
 
       create index if not exists idx_rooms_updated_at on rooms(updated_at);
     `
+  },
+  {
+    version: 2,
+    sql: `
+      alter table puzzles add column ai_profile_json text;
+      alter table puzzles add column ai_profile_version integer not null default 0;
+      alter table puzzles add column ai_profile_generated_at text;
+    `
   }
 ];

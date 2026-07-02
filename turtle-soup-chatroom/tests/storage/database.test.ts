@@ -52,4 +52,15 @@ describe("openDatabase", () => {
     });
     second.close();
   });
+
+  it("creates AI profile columns for server-only opening recommendations", () => {
+    const dbPath = makeDbPath();
+    const db = openDatabase(dbPath);
+    const columns = db.prepare("pragma table_info(puzzles)").all() as Array<{ name: string }>;
+
+    expect(columns.map((column) => column.name)).toContain("ai_profile_json");
+    expect(columns.map((column) => column.name)).toContain("ai_profile_version");
+    expect(columns.map((column) => column.name)).toContain("ai_profile_generated_at");
+    db.close();
+  });
 });

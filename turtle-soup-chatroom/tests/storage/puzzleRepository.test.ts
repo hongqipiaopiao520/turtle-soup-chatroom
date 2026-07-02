@@ -94,6 +94,36 @@ describe("PuzzleRepository", () => {
     db.close();
   });
 
+  it("stores AI profiles internally but keeps public puzzles clean", () => {
+    const db = makeDb();
+    const repository = createPuzzleRepository(db);
+    repository.upsertManaged(makeDraft({
+      id: "profiled-puzzle",
+      status: "published",
+      publishedAt: "2026-06-23T00:00:00.000Z"
+    }));
+
+    repository.updateAiProfile("profiled-puzzle", {
+      themes: ["亲情", "父母"],
+      moods: ["压抑", "反转"],
+      twistTypes: ["关系误导"],
+      contentWarnings: ["死亡"],
+      suitableFor: ["标准局"],
+      intensity: { gore: 1, horror: 2, sadness: 4, absurdity: 1 },
+      spoilerFreePitch: "家庭关系里的异常行为是核心误导点。",
+      estimatedQuestions: 18,
+      profileVersion: 1,
+      generatedAt: "2026-07-01T00:00:00.000Z"
+    });
+
+    expect(repository.findById("profiled-puzzle")?.aiProfile?.themes).toEqual(["亲情", "父母"]);
+    const publicPuzzle = repository.listPublished().find((puzzle) => puzzle.id === "profiled-puzzle");
+    expect(publicPuzzle).not.toHaveProperty("truth");
+    expect(publicPuzzle).not.toHaveProperty("solutionPoints");
+    expect(publicPuzzle).not.toHaveProperty("aiProfile");
+    db.close();
+  });
+
   it("publishes and rejects managed puzzles", () => {
     const db = makeDb();
     const repository = createPuzzleRepository(db);
