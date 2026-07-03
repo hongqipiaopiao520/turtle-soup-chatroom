@@ -171,6 +171,8 @@ describe("room UI settlement", () => {
     expect(markup).toContain("side-tool-drawer");
     expect(markup).toContain("auxiliary-rail");
     expect(markup).toContain("aux-rail-header");
+    expect(markup).toContain("companion-agent-float");
+    expect(markup).toContain("companion-agent-trigger");
   });
 
   it("keeps persona status compact instead of rendering stage artwork in the room flow", () => {
@@ -430,6 +432,77 @@ describe("room UI settlement", () => {
 
     expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("在线用户"));
     expect(markup.indexOf("游戏聊天")).toBeLessThan(markup.indexOf("贡献榜"));
+  });
+
+  it("keeps the companion agent out of the auxiliary side rail", () => {
+    const markup = renderToStaticMarkup(
+      <SidePanel
+        room={makeSolvedRoom()}
+        playerId="player-host"
+        onSendChat={() => undefined}
+      />
+    );
+
+    expect(markup).not.toContain("companion-agent-section");
+    expect(markup).not.toContain("陪玩 Agent");
+  });
+
+  it("renders a compact floating companion agent from public host history", () => {
+    const room = {
+      ...makeSolvedRoom(),
+      answerUnlocked: false,
+      truthRevealed: false,
+      truth: "隐藏汤底不该出现在陪玩 Agent。",
+      hostLog: [
+        ...makeSolvedRoom().hostLog,
+        {
+          id: "answer-water",
+          playerId: "player-host",
+          playerName: "房主",
+          question: "水的状态关键吗？",
+          answerType: "partial" as const,
+          answer: "有关。",
+          progress: 36,
+          progressDelta: 12,
+          contributionScore: 60,
+          isBreakthrough: false,
+          pinned: false,
+          createdAt: "2026-06-23T00:04:00.000Z"
+        }
+      ]
+    };
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { origin: "http://localhost:5173" }, setTimeout: () => 0 }
+    });
+
+    const markup = renderToStaticMarkup(
+      <RoomPage
+        room={room}
+        playerId="player-host"
+        onBack={() => undefined}
+        onAsk={() => undefined}
+        onPin={() => undefined}
+        onReveal={() => undefined}
+        onRevealHint={() => undefined}
+        onRequestHint={() => undefined}
+        onSendChat={() => undefined}
+      />
+    );
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+
+    expect(markup).toContain("companion-agent-float");
+    expect(markup).toContain("companion-agent-trigger");
+    expect(markup).toContain("companion-agent-popover");
+    expect(markup).toContain("陪玩 Agent");
+    expect(markup).toContain("建议下一问");
+    expect(markup).toContain("水的来源或状态发生过变化吗？");
+    expect(markup).not.toContain("隐藏汤底");
   });
 
   it("keeps the contribution list focused on scores when it grows", () => {

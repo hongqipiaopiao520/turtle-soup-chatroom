@@ -4,6 +4,7 @@ import type { ManagedPuzzle, PuzzleStatus } from "../src/shared/types";
 import { importPuzzleTextFromImages } from "./imagePuzzleImporter";
 import { parseMultipartImageUpload } from "./multipartImageUpload";
 import { createFallbackDraft, importPuzzleFromText } from "./puzzleImporter";
+import { generatePuzzleAiProfile } from "./puzzleAiProfile";
 import { analyzePuzzleTagsWithAi } from "./puzzleTags";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
 
@@ -47,6 +48,12 @@ const AdminPuzzleUpdateSchema = z.object({
 const ReanalyzeTagsSchema = z.object({
   ids: z.array(z.string().trim().min(1)).max(500).optional(),
   status: z.enum(["all", "draft", "reviewing", "published", "rejected"]).default("all")
+});
+
+const GenerateAiProfilesSchema = z.object({
+  ids: z.array(z.string().trim().min(1)).max(500).optional(),
+  status: z.enum(["all", "draft", "reviewing", "published", "rejected"]).default("all"),
+  overwrite: z.boolean().default(false)
 });
 
 export function isAdminRequestAuthorized(authorizationHeader: string | undefined) {
@@ -140,6 +147,38 @@ export async function reanalyzePuzzleTags(repository: PuzzleRepository, input: u
   return { updated, unchanged };
 }
 
+export async function generatePuzzleAiProfiles(repository: PuzzleRepository, input: unknown) {
+  const parsed = GenerateAiProfilesSchema.parse(input);
+  const candidates = parsed.ids?.length
+    ? parsed.ids.map((id) => repository.findById(id)).filter((puzzle): puzzle is ManagedPuzzle => Boolean(puzzle))
+    : repository.listManaged(parsed.status === "all" ? undefined : parsed.status);
+  const updated: ManagedPuzzle[] = [];
+  const skipped: string[] = [];
+  const failed: Array<{ id: string; message: string }> = [];
+
+  for (const puzzle of candidates) {
+    if (puzzle.aiProfile && !parsed.overwrite) {
+      skipped.push(puzzle.id);
+      continue;
+    }
+    try {
+      const profile = await generatePuzzleAiProfile({
+        title: puzzle.title,
+        surface: puzzle.surface,
+        truth: puzzle.truth,
+        difficulty: puzzle.difficulty,
+        tags: puzzle.tags,
+        estimatedMinutes: puzzle.estimatedMinutes
+      });
+      updated.push(repository.updateAiProfile(puzzle.id, profile));
+    } catch (error) {
+      failed.push({ id: puzzle.id, message: error instanceof Error ? error.message : "画像生成失败" });
+    }
+  }
+
+  return { updated, skipped, failed };
+}
+
 export function createAdminPuzzleRouter(repository: PuzzleRepository) {
   const router = Router();
 
@@ -195,6 +234,14 @@ export function createAdminPuzzleRouter(repository: PuzzleRepository) {
       response.json(await reanalyzePuzzleTags(repository, request.body));
     } catch (error) {
       response.status(400).json({ message: error instanceof Error ? error.message : "标签重新分析失败" });
+    }
+  });
+
+  router.post("/puzzles/generate-ai-profiles", async (request, response) => {
+    try {
+      response.json(await generatePuzzleAiProfiles(repository, request.body));
+    } catch (error) {
+      response.status(400).json({ message: error instanceof Error ? error.message : "AI 画像生成失败" });
     }
   });
 

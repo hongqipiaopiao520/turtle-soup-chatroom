@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { seedPuzzles } from "../src/data/seedPuzzles";
 import {
   deleteAdminPuzzle,
+  generatePuzzleAiProfiles,
   importTextDraft,
   importBatchWithAi,
   importTextWithAi,
@@ -267,6 +268,94 @@ describe("admin puzzle helpers", () => {
         body: expect.stringContaining("海龟汤题库标签编辑")
       })
     );
+    db.close();
+  });
+
+  it("generates AI profiles for selected puzzles and falls back when the provider fails", async () => {
+    process.env.AI_BASE_URL = "https://example.test";
+    process.env.AI_API_KEY = "test-key";
+    process.env.AI_MODEL = "test-model";
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: JSON.stringify({
+            themes: ["亲情", "父母"],
+            moods: ["压抑", "反转"],
+            twistTypes: ["关系误导"],
+            contentWarnings: ["死亡"],
+            suitableFor: ["标准局"],
+            intensity: { gore: 1, horror: 2, sadness: 4, absurdity: 1 },
+            spoilerFreePitch: "亲情关系里的异常行为是核心误导点。",
+            estimatedQuestions: 18
+          }) } }]
+        })
+      } as unknown as Response)
+      .mockRejectedValueOnce(new Error("network failed"));
+    const { db, repository } = makeRepository();
+    const first = importTextDraft(repository, { rawText: "父母题\n汤面一" });
+    const second = importTextDraft(repository, { rawText: "失败题\n汤面二" });
+    repository.updateManaged(first.id, {
+      title: "父母题",
+      surface: "我和父母回乡参加葬礼。",
+      truth: "家庭关系异常导致了误会。",
+      solutionPoints: ["家庭关系异常"],
+      hints: [],
+      difficulty: "hard",
+      tags: ["本格", "红汤", "全人类", "高难"],
+      qualityScore: 80,
+      qualityIssues: [],
+      qualitySummary: "可发布"
+    });
+    repository.updateManaged(second.id, {
+      title: "失败题",
+      surface: "一个人坐进电梯后沉默。",
+      truth: "电梯里的声音来自旧录音。",
+      solutionPoints: ["旧录音"],
+      hints: [],
+      difficulty: "medium",
+      tags: ["本格", "清汤", "全人类", "中级"],
+      qualityScore: 80,
+      qualityIssues: [],
+      qualitySummary: "可发布"
+    });
+
+    const result = await generatePuzzleAiProfiles(repository, { ids: [first.id, second.id] });
+
+    expect(result.updated).toHaveLength(2);
+    expect(result.updated.map((puzzle) => puzzle.id)).toEqual([first.id, second.id]);
+    expect(result.updated[0].aiProfile?.themes).toEqual(["亲情", "父母"]);
+    expect(result.updated[1].aiProfile?.spoilerFreePitch).toBe("本格、清汤、全人类、中级题，适合想要清晰线索的玩家。");
+    expect(result.failed).toEqual([]);
+    expect(repository.findById(first.id)?.aiProfile?.spoilerFreePitch).toBe("亲情关系里的异常行为是核心误导点。");
+    db.close();
+  });
+
+  it("skips existing AI profiles unless overwrite is requested", async () => {
+    process.env.AI_BASE_URL = "https://example.test";
+    process.env.AI_API_KEY = "test-key";
+    process.env.AI_MODEL = "test-model";
+    globalThis.fetch = vi.fn();
+    const { db, repository } = makeRepository();
+    const puzzle = importTextDraft(repository, { rawText: "已有画像\n汤面" });
+    repository.updateAiProfile(puzzle.id, {
+      themes: ["生活"],
+      moods: ["轻松"],
+      twistTypes: ["核心反转"],
+      contentWarnings: [],
+      suitableFor: ["新手局"],
+      intensity: { gore: 0, horror: 0, sadness: 1, absurdity: 1 },
+      spoilerFreePitch: "已有画像。",
+      estimatedQuestions: 12,
+      profileVersion: 1,
+      generatedAt: "2026-07-01T00:00:00.000Z"
+    });
+
+    const result = await generatePuzzleAiProfiles(repository, { ids: [puzzle.id] });
+
+    expect(result.updated).toEqual([]);
+    expect(result.skipped).toEqual([puzzle.id]);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
     db.close();
   });
 });

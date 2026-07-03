@@ -126,4 +126,119 @@ describe("opening director", () => {
     expect(json).not.toContain("私有关键点");
     expect(json).not.toContain("aiProfile");
   });
+
+  it("surfaces spoiler-free semantic retrieval reasons", async () => {
+    const response = await createOpeningDirectorPlans({
+      prompt: "涉及父母但不要血腥",
+      puzzles: [basePuzzle],
+      limit: 1
+    });
+
+    expect(response.agentTrace.find((item) => item.toolName === "search_puzzles")?.summary).toContain("语义召回");
+    expect(response.plans[0]).toMatchObject({
+      retrievalMatches: expect.arrayContaining(["父母"]),
+      retrievalScore: expect.any(Number)
+    });
+    expect(response.plans[0].matchSummary).toContain("父母");
+
+    const retrievalJson = JSON.stringify(response.plans[0]);
+    expect(retrievalJson).not.toContain("私有真相");
+    expect(retrievalJson).not.toContain("私有关键点");
+  });
+
+  it("counts semantic retrieval matches before limiting plans", async () => {
+    const siblingCase: ManagedPuzzle = {
+      ...basePuzzle,
+      id: "sibling-case",
+      title: "家庭回声",
+      tags: ["本格", "生活"],
+      rating: 7.8,
+      plays: 12,
+      aiProfile: {
+        ...basePuzzle.aiProfile!,
+        themes: ["家庭", "亲情"],
+        spoilerFreePitch: "家庭关系里的反常举动值得追问。"
+      }
+    };
+
+    const response = await createOpeningDirectorPlans({
+      prompt: "涉及父母但不要血腥",
+      puzzles: [basePuzzle, siblingCase],
+      limit: 1
+    });
+
+    expect(response.plans).toHaveLength(1);
+    expect(response.agentTrace.find((item) => item.toolName === "search_puzzles")?.summary).toContain("语义召回 2 道");
+  });
+
+  it("returns a visible agent workflow trace before confirmation", async () => {
+    const response = await createOpeningDirectorPlans({
+      prompt: "涉及父母，反转强一点，不要太血腥",
+      puzzles: [basePuzzle],
+      limit: 1
+    });
+
+    expect(response.agentTrace.map((item) => item.label)).toEqual([
+      "理解偏好",
+      "搜索题库",
+      "匹配画像",
+      "生成方案",
+      "等待确认"
+    ]);
+    expect(response.agentTrace.at(-1)).toMatchObject({
+      id: "request_confirm",
+      status: "waiting"
+    });
+  });
+
+  it("exposes stable tool names for the opening agent trace", async () => {
+    const response = await createOpeningDirectorPlans({
+      prompt: "涉及父母，反转强一点，不要太血腥",
+      puzzles: [basePuzzle],
+      limit: 1
+    });
+
+    expect(response.agentTrace.map((item) => item.toolName)).toEqual([
+      "parse_intent",
+      "search_puzzles",
+      "rank_profiles",
+      "draft_plans",
+      "request_confirm"
+    ]);
+    expect(response.agentTrace[0].inputSummary).toContain("涉及父母");
+    expect(response.agentTrace[1].outputSummary).toContain("1 道");
+  });
+
+  it("returns a decision card instead of plans for ambiguous intensity requests", async () => {
+    const response = await createOpeningDirectorPlans({
+      prompt: "来个刺激一点的",
+      puzzles: [basePuzzle],
+      limit: 1
+    });
+
+    expect(response.plans).toEqual([]);
+    expect(response.decision).toMatchObject({
+      id: "clarify_intensity",
+      title: "刺激优先还是推理优先？"
+    });
+    expect(response.decision?.options.map((option) => option.id)).toEqual(["more_intense", "more_reasoning"]);
+    expect(response.agentTrace.at(-1)).toMatchObject({
+      id: "request_confirm",
+      status: "waiting",
+      summary: "先选择一个理解方向"
+    });
+  });
+
+  it("continues planning after a decision option is selected", async () => {
+    const response = await createOpeningDirectorPlans({
+      prompt: "来个刺激一点的",
+      puzzles: [basePuzzle],
+      limit: 1,
+      decisionId: "more_reasoning"
+    });
+
+    expect(response.decision).toBeUndefined();
+    expect(response.plans).toHaveLength(1);
+    expect(response.intent.moods).toContain("反转");
+  });
 });

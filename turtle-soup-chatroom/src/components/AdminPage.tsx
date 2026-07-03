@@ -1,4 +1,4 @@
-import { Check, DownloadCloud, RefreshCw, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { Bot, Check, DownloadCloud, RefreshCw, Save, Search, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import type { ChangeEvent, ClipboardEvent, Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -6,6 +6,7 @@ import {
   type AdminImageImportResult,
   deleteAdminPuzzleBatch,
   fetchAdminPuzzles,
+  generateAdminPuzzleAiProfiles,
   importAdminPuzzleBatch,
   importAdminPuzzleText,
   parseAdminPuzzleImages,
@@ -16,7 +17,8 @@ import {
   updateAdminPuzzle
 } from "../client/adminPuzzles";
 import { parsePuzzleFileContent, type ParsedPuzzleFileItem } from "../client/puzzleFileImport";
-import type { Difficulty, ManagedPuzzle, PuzzleStatus } from "../shared/types";
+import { createPuzzleAgentAudit } from "../shared/puzzleAgentAudit";
+import type { Difficulty, ManagedPuzzle, PuzzleAiProfile, PuzzleStatus } from "../shared/types";
 import { AiHostHarnessPanel } from "./AiHostHarnessPanel";
 import { SelectField } from "./ui";
 
@@ -405,6 +407,32 @@ export function AdminPage({
     }
   }
 
+  async function generateSelectedAiProfiles(overwrite = false, explicitIds?: string[]) {
+    const ids = explicitIds ?? (selectedIds.length > 0 ? selectedIds : selectedPuzzle ? [selectedPuzzle.id] : []);
+    if (ids.length === 0) {
+      setMessage("请先选择要生成 AI 画像的题目");
+      return;
+    }
+    setIsBusy(true);
+    setMessage("正在生成 AI 画像...");
+    try {
+      const result = await generateAdminPuzzleAiProfiles({ ids, overwrite }, { token: token.trim() || undefined });
+      setPuzzles((current) => current.map((puzzle) => result.updated.find((item) => item.id === puzzle.id) ?? puzzle));
+      const updatedSelected = result.updated.find((item) => item.id === selectedId);
+      if (updatedSelected) {
+        setDraft(puzzleToDraft(updatedSelected));
+      }
+      const failureText = result.failed.length
+        ? `，失败 ${result.failed.length} 条：${result.failed.map((failure) => failure.message).join("；")}`
+        : "";
+      setMessage(`已生成 ${result.updated.length} 条 AI 画像，跳过 ${result.skipped.length} 条${failureText}`);
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   async function deleteSelectedImports() {
     const ids = selectedIds.length > 0
       ? selectedIds.filter((id) => puzzles.some((puzzle) => puzzle.id === id))
@@ -644,6 +672,9 @@ export function AdminPage({
             <button className="ghost-button" type="button" onClick={reanalyzeSelectedTags} disabled={isBusy || (!selectedPuzzle && selectedIds.length === 0)}>
               <RefreshCw size={16} /> 重新分析标签
             </button>
+            <button className="ghost-button" type="button" onClick={() => void generateSelectedAiProfiles(false)} disabled={isBusy || (!selectedPuzzle && selectedIds.length === 0)}>
+              <Sparkles size={16} /> 生成 AI 画像
+            </button>
             <button className="ghost-button danger-button" type="button" onClick={deleteSelectedImports} disabled={isBusy || (!selectedPuzzle && selectedIds.length === 0)}>
               <Trash2 size={16} /> 删除导入
             </button>
@@ -772,6 +803,12 @@ export function AdminPage({
           <AdminField label="质量摘要">
             <input value={draft.qualitySummary} onChange={(event) => setDraftField(setDraft, "qualitySummary", event.target.value)} />
           </AdminField>
+          <AiProfilePanel
+            puzzle={selectedPuzzle}
+            profile={selectedPuzzle?.aiProfile}
+            disabled={!selectedPuzzle || isBusy}
+            onGenerate={() => selectedPuzzle && void generateSelectedAiProfiles(true, [selectedPuzzle.id])}
+          />
           <div className="admin-editor-grid">
             <AdminField label="来源标题">
               <input value={draft.sourceTitle} onChange={(event) => setDraftField(setDraft, "sourceTitle", event.target.value)} />
@@ -796,6 +833,69 @@ function AdminField({ label, children }: { label: string; children: ReactNode })
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+function AiProfilePanel({
+  puzzle,
+  profile,
+  disabled,
+  onGenerate
+}: {
+  puzzle?: ManagedPuzzle;
+  profile?: PuzzleAiProfile;
+  disabled: boolean;
+  onGenerate: () => void;
+}) {
+  const audit = createPuzzleAgentAudit(puzzle);
+
+  return (
+    <section className="admin-ai-profile-panel" aria-label="题库 Agent 审核台">
+      <div className="admin-ai-profile-head">
+        <div>
+          <span><Bot size={14} /> 题库 Agent 审核台</span>
+          <strong>{profile ? "开局导演可用" : "暂无 AI 画像"}</strong>
+        </div>
+        <button className="ghost-button" type="button" onClick={onGenerate} disabled={disabled}>
+          <Sparkles size={16} /> 为当前题生成
+        </button>
+      </div>
+      <dl className="admin-agent-audit-grid">
+        <div><dt>画像完整度</dt><dd>{audit.profileCompleteness}%</dd></div>
+        <div><dt>推荐可用性</dt><dd>{audit.recommendationReadiness}</dd></div>
+        <div><dt>剧透风险</dt><dd>{audit.spoilerRisk}</dd></div>
+        <div><dt>标签可信度</dt><dd>{audit.tagConfidence}</dd></div>
+      </dl>
+      <div className="admin-agent-suggestions">
+        <span>Agent 建议</span>
+        <ol>
+          {audit.suggestions.slice(0, 4).map((suggestion) => (
+            <li key={suggestion}>{suggestion}</li>
+          ))}
+        </ol>
+      </div>
+      {profile ? (
+        <>
+          <p className="admin-ai-profile-pitch">{profile.spoilerFreePitch}</p>
+          <div className="admin-ai-profile-tags">
+            {[...profile.themes, ...profile.moods, ...profile.twistTypes, ...profile.suitableFor].slice(0, 10).map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+          <dl className="admin-ai-profile-grid">
+            <div><dt>强度</dt><dd>血腥 {profile.intensity.gore} / 恐怖 {profile.intensity.horror}</dd></div>
+            <div><dt>情绪</dt><dd>压抑 {profile.intensity.sadness} / 荒诞 {profile.intensity.absurdity}</dd></div>
+            <div><dt>问数</dt><dd>预计 {profile.estimatedQuestions} 问</dd></div>
+            <div><dt>版本</dt><dd>v{profile.profileVersion}</dd></div>
+          </dl>
+          {profile.contentWarnings.length > 0 && (
+            <p className="admin-ai-profile-warning">内容提醒：{profile.contentWarnings.join("、")}</p>
+          )}
+        </>
+      ) : (
+        <p className="admin-ai-profile-empty">暂无 AI 画像。生成后首页开局导演会使用它匹配口味、强度和推荐理由。</p>
+      )}
+    </section>
   );
 }
 

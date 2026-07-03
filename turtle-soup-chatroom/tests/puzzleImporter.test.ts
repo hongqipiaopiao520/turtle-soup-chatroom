@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildImportPrompt, createFallbackDraft, createImportFingerprintId, importPuzzleFromText, parsePuzzleImportResponse } from "../server/puzzleImporter";
-import { inferPuzzleTagsFromText, normalizePuzzleTags } from "../server/puzzleTags";
+import { analyzePuzzleTagsWithAi, inferPuzzleTagsFromText, normalizePuzzleTags } from "../server/puzzleTags";
 
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
@@ -42,6 +42,26 @@ describe("puzzle tag taxonomy", () => {
       surface: "房间里传来鬼的声音。",
       truth: "真正说话的是幽灵。"
     })).toEqual(["变格", "清汤", "含非人", "入门"]);
+  });
+
+  it("falls back to rule tags when AI tag analysis is aborted", async () => {
+    configureAiEnv();
+    process.env.AI_TAG_TIMEOUT_MS = "20";
+    globalThis.fetch = vi.fn((_url, init) => new Promise((_resolve, reject) => {
+      const signal = (init as RequestInit).signal as AbortSignal | undefined;
+      signal?.addEventListener("abort", () => {
+        const error = new Error("This operation was aborted");
+        error.name = "AbortError";
+        reject(error);
+      });
+    })) as unknown as typeof fetch;
+
+    await expect(analyzePuzzleTagsWithAi({
+      title: "冷掉的水",
+      difficulty: "easy",
+      surface: "男人喝了一口冷水后立刻报警。",
+      truth: "水原本是热的，说明有人进入房间。"
+    })).resolves.toEqual(["本格", "清汤", "全人类", "入门"]);
   });
 });
 

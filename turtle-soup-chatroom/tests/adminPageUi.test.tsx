@@ -78,11 +78,59 @@ describe("AdminPage", () => {
 
     expect(markup).toContain("批量发布");
     expect(markup).toContain("重新分析标签");
+    expect(markup).toContain("生成 AI 画像");
     expect(markup).toContain("删除导入");
     expect(markup).toContain("全选当前列表");
     expect(markup).toContain("清空选择");
     expect(markup).toContain('type="checkbox"');
     expect(markup).toContain("选择题目");
+  });
+
+  it("renders the selected puzzle AI profile in the review workbench", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPage
+        initialPuzzles={[{
+          ...makePuzzle(),
+          aiProfile: {
+            themes: ["亲情", "父母"],
+            moods: ["压抑", "反转"],
+            twistTypes: ["关系误导"],
+            contentWarnings: ["死亡"],
+            suitableFor: ["标准局"],
+            intensity: { gore: 1, horror: 2, sadness: 4, absurdity: 1 },
+            spoilerFreePitch: "亲情关系里的异常行为是核心误导点。",
+            estimatedQuestions: 18,
+            profileVersion: 1,
+            generatedAt: "2026-07-01T00:00:00.000Z"
+          }
+        }]}
+        disableInitialLoad
+      />
+    );
+
+    expect(markup).toContain("题库 Agent 审核台");
+    expect(markup).toContain("AI 画像");
+    expect(markup).toContain("画像完整度");
+    expect(markup).toContain("推荐可用性");
+    expect(markup).toContain("剧透风险");
+    expect(markup).toContain("标签可信度");
+    expect(markup).toContain("Agent 建议");
+    expect(markup).toContain("亲情关系里的异常行为是核心误导点。");
+    expect(markup).toContain("亲情");
+    expect(markup).toContain("血腥 1");
+    expect(markup).toContain("预计 18 问");
+    expect(markup).toContain("为当前题生成");
+  });
+
+  it("renders an empty AI profile state when the selected puzzle has no profile", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPage initialPuzzles={[makePuzzle()]} disableInitialLoad />
+    );
+
+    expect(markup).toContain("题库 Agent 审核台");
+    expect(markup).toContain("暂无 AI 画像");
+    expect(markup).toContain("先生成 AI 画像，再进入开局 Agent 推荐池。");
+    expect(markup).toContain("为当前题生成");
   });
 
   it("uses unified select controls in admin filters and editor fields", () => {

@@ -51,10 +51,21 @@ describe("layout CSS", () => {
     expect(css).toMatch(/@media \(max-width:\s*900px\)[\s\S]*\.case-file-copy\s*\{[^}]*max-width:\s*100%/s);
   });
 
-  it("keeps the opening director compact and card based", () => {
+  it("keeps the opening agent in a floating drawer outside the home hero", () => {
     expect(css).toMatch(/\.opening-director-panel\s*\{/);
     expect(css).toMatch(/\.opening-director-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/s);
     expect(css).toMatch(/\.opening-director-plans\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/s);
+    expect(css).toMatch(/\.opening-agent-float\s*\{[^}]*position:\s*fixed/s);
+    expect(css).toMatch(/\.opening-agent-float\s*\{[^}]*right:\s*18px/s);
+    expect(css).toMatch(/\.opening-agent-float\s*\{[^}]*bottom:\s*18px/s);
+    expect(css).toMatch(/\.opening-agent-drawer\s*\{[^}]*position:\s*absolute/s);
+    expect(css).toMatch(/\.opening-agent-drawer\s*\{[^}]*width:\s*min\(430px,\s*calc\(100vw - 36px\)\)/s);
+    expect(css).toMatch(/\.home-hero \.host-persona-showcase\s*\{[^}]*margin-top:\s*0/s);
+    expect(css).toMatch(/\.agent-chat-card\s*\{[^}]*display:\s*grid/s);
+    expect(css).toMatch(/\.agent-workflow\s*\{[^}]*padding:\s*0/s);
+    expect(css).toMatch(/\.agent-workflow summary\s*\{[^}]*min-height:\s*36px/s);
+    expect(css).toMatch(/\.agent-trace-list\s*\{[^}]*grid-template-columns:\s*1fr/s);
+    expect(css).not.toMatch(/\.agent-trace-list\s*\{[^}]*repeat\(5,\s*minmax\(0,\s*1fr\)\)/s);
     expect(css).toMatch(/@media \(max-width:\s*900px\)[\s\S]*\.opening-director-plans\s*\{[^}]*grid-template-columns:\s*1fr/s);
   });
 
@@ -146,6 +157,10 @@ describe("layout CSS", () => {
     expect(css).toMatch(/\.side-tool-drawer\s*\{[^}]*display:\s*grid/s);
     expect(css).toMatch(/\.side-tool-drawer\s*\{[^}]*border-top:\s*1px solid rgba\(221,\s*205,\s*158,\s*0\.1\)/s);
     expect(css).toMatch(/\.tool-drawer-section\s*\{[^}]*border-bottom:\s*1px solid rgba\(221,\s*205,\s*158,\s*0\.09\)/s);
+    expect(css).toMatch(/\.companion-agent-float\s*\{[^}]*position:\s*fixed/s);
+    expect(css).toMatch(/\.companion-agent-float\s*\{[^}]*right:\s*18px/s);
+    expect(css).toMatch(/\.companion-agent-float\s*\{[^}]*bottom:\s*18px/s);
+    expect(css).toMatch(/\.companion-agent-popover\s*\{[^}]*width:\s*min\(320px,\s*calc\(100vw - 36px\)\)/s);
     expect(css).toMatch(/\.chat-section\s*\{[^}]*opacity:\s*0\.74/s);
     expect(css).toMatch(/\.chat-section h2\s*\{[^}]*font-size:\s*12px/s);
     expect(css).toMatch(/\.chat-input input\s*\{[^}]*min-height:\s*36px/s);

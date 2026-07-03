@@ -55,6 +55,18 @@ export interface AdminTagReanalysisResult {
   unchanged: string[];
 }
 
+export interface AdminAiProfileGenerationInput {
+  ids?: string[];
+  status?: PuzzleStatus | "all";
+  overwrite?: boolean;
+}
+
+export interface AdminAiProfileGenerationResult {
+  updated: ManagedPuzzle[];
+  skipped: string[];
+  failed: Array<{ id: string; message: string }>;
+}
+
 export interface AdminPuzzleUpdateInput {
   title: string;
   surface: string;
@@ -218,6 +230,18 @@ export async function deleteAdminPuzzleBatch(ids: string[], options: AdminClient
 export function reanalyzeAdminPuzzleTags(input: AdminTagReanalysisInput, options: AdminClientOptions = {}) {
   return adminFetch<AdminTagReanalysisResult>(
     "/api/admin/puzzles/reanalyze-tags",
+    {
+      method: "POST",
+      headers: headers(options, true),
+      body: JSON.stringify(input)
+    },
+    options
+  );
+}
+
+export function generateAdminPuzzleAiProfiles(input: AdminAiProfileGenerationInput, options: AdminClientOptions = {}) {
+  return adminFetch<AdminAiProfileGenerationResult>(
+    "/api/admin/puzzles/generate-ai-profiles",
     {
       method: "POST",
       headers: headers(options, true),

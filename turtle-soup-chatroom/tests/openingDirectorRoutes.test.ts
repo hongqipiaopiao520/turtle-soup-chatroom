@@ -92,6 +92,13 @@ describe("opening director route", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.plans.length).toBeGreaterThan(0);
+    expect(body.agentTrace.map((item: { label: string }) => item.label)).toEqual([
+      "理解偏好",
+      "搜索题库",
+      "匹配画像",
+      "生成方案",
+      "等待确认"
+    ]);
     const json = JSON.stringify(body);
     expect(json).not.toContain("truth");
     expect(json).not.toContain("solutionPoints");

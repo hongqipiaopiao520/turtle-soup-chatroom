@@ -1,9 +1,9 @@
-import { Bot, FileSearch, Loader2, Play, Search, Shuffle, Sparkles, Users } from "lucide-react";
+import { Bot, FileSearch, Loader2, Play, Search, Shuffle, Sparkles, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { fetchOpeningDirectorPlans } from "../client/openingDirector";
 import type { StoredRoomSession } from "../client/roomSessionMemory";
 import { collectTags, filterPuzzles } from "../shared/puzzleFilters";
-import type { Difficulty, OpeningDirectorPlan, PublicPuzzle, PuzzleSort } from "../shared/types";
+import type { Difficulty, OpeningDirectorDecision, OpeningDirectorPlan, OpeningDirectorTraceItem, PublicPuzzle, PuzzleSort } from "../shared/types";
 import { PuzzleCard } from "./PuzzleCard";
 import { SelectField } from "./ui";
 
@@ -36,6 +36,59 @@ const hostPersonas = [
     image: "/assets/host-guigui.png"
   }
 ] as const;
+
+const defaultAgentTrace: OpeningDirectorTraceItem[] = [
+  {
+    id: "parse_intent",
+    toolName: "parse_intent",
+    label: "理解偏好",
+    status: "active",
+    summary: "等待你的开局需求",
+    detail: "告诉我想玩的主题、强度、主持风格或时长。",
+    inputSummary: "自然语言需求",
+    outputSummary: "待解析"
+  },
+  {
+    id: "search_puzzles",
+    toolName: "search_puzzles",
+    label: "搜索题库",
+    status: "waiting",
+    summary: "准备检索候选",
+    detail: "只会使用已发布题目。",
+    inputSummary: "已发布题库",
+    outputSummary: "待检索"
+  },
+  {
+    id: "rank_profiles",
+    toolName: "rank_profiles",
+    label: "匹配画像",
+    status: "waiting",
+    summary: "准备匹配主题和强度",
+    detail: "按画像、难度、热度综合排序。",
+    inputSummary: "候选题目",
+    outputSummary: "待排序"
+  },
+  {
+    id: "draft_plans",
+    toolName: "draft_plans",
+    label: "生成方案",
+    status: "waiting",
+    summary: "准备配置开局",
+    detail: "会配好题目、主持人和问数。",
+    inputSummary: "排序候选",
+    outputSummary: "待生成"
+  },
+  {
+    id: "request_confirm",
+    toolName: "request_confirm",
+    label: "等待确认",
+    status: "waiting",
+    summary: "确认后再开房",
+    detail: "开房是最后一步，不会自动推进。",
+    inputSummary: "开局方案",
+    outputSummary: "等待确认"
+  }
+];
 
 function pickFeaturedPuzzle(puzzles: PublicPuzzle[]): PublicPuzzle | undefined {
   return [...puzzles].sort((left, right) => {
@@ -71,8 +124,11 @@ export function HomePage({
   const [sort, setSort] = useState<PuzzleSort>("hot");
   const [directorPrompt, setDirectorPrompt] = useState("涉及父母，反转强一点，不要太血腥");
   const [directorPlans, setDirectorPlans] = useState<OpeningDirectorPlan[]>([]);
+  const [agentTrace, setAgentTrace] = useState<OpeningDirectorTraceItem[]>(defaultAgentTrace);
+  const [directorDecision, setDirectorDecision] = useState<OpeningDirectorDecision | null>(null);
   const [directorError, setDirectorError] = useState("");
   const [isDirectorLoading, setIsDirectorLoading] = useState(false);
+  const [isOpeningAgentOpen, setIsOpeningAgentOpen] = useState(false);
 
   const tags = useMemo(() => collectTags(availablePuzzles), [availablePuzzles]);
   const featuredPuzzle = useMemo(() => pickFeaturedPuzzle(availablePuzzles), [availablePuzzles]);
@@ -82,17 +138,24 @@ export function HomePage({
     [availablePuzzles, query, difficulty, tag, sort]
   );
 
-  async function generateOpeningPlans() {
+  async function generateOpeningPlans(decisionId?: string) {
     const prompt = directorPrompt.trim();
     if (!prompt) return;
     setIsDirectorLoading(true);
     setDirectorError("");
+    setAgentTrace(defaultAgentTrace.map((item, index) => ({
+      ...item,
+      status: index === 0 ? "active" : "waiting"
+    })));
     try {
-      const response = await fetchOpeningDirectorPlans({ prompt, limit: 3 });
-      setDirectorPlans(response.plans);
+      const response = await fetchOpeningDirectorPlans({ prompt, limit: 3, decisionId });
+      setDirectorDecision(response.decision ?? null);
+      setDirectorPlans(response.decision ? [] : response.plans);
+      setAgentTrace(response.agentTrace);
     } catch (error) {
       setDirectorError(error instanceof Error ? error.message : "开局导演暂时不可用");
       setDirectorPlans([]);
+      setDirectorDecision(null);
     } finally {
       setIsDirectorLoading(false);
     }
@@ -162,7 +225,7 @@ export function HomePage({
         <aside className="host-persona-showcase" aria-label="AI 主持人形象">
           <div className="host-showcase-head">
             <span className="panel-kicker"><Sparkles size={14} /> AI 主持席</span>
-            <strong>三种控场风格</strong>
+            <strong>开局时自动匹配控场风格</strong>
           </div>
           <div className="host-persona-grid">
             {hostPersonas.map((persona) => (
@@ -181,60 +244,122 @@ export function HomePage({
         </aside>
       </section>
 
-      <section className="opening-director-panel" aria-labelledby="opening-director-title">
-        <div className="opening-director-head">
-          <div>
-            <span className="panel-kicker"><Bot size={14} /> AI 开局导演</span>
-            <h2 id="opening-director-title">说出想玩的感觉，我来配题、主持和问数。</h2>
-          </div>
-        </div>
-        <form
-          className="opening-director-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void generateOpeningPlans();
-          }}
+      <aside className={isOpeningAgentOpen ? "opening-agent-float opening-agent-float-open" : "opening-agent-float"} aria-label="开局 Agent">
+        <button
+          className="opening-agent-trigger"
+          type="button"
+          aria-expanded={isOpeningAgentOpen}
+          onClick={() => setIsOpeningAgentOpen((value) => !value)}
         >
-          <input
-            value={directorPrompt}
-            onChange={(event) => setDirectorPrompt(event.target.value)}
-            maxLength={300}
-            placeholder="比如：涉及父母，反转强一点，不要太血腥"
-          />
-          <button className="primary-button" type="submit" disabled={isDirectorLoading}>
-            {isDirectorLoading ? <Loader2 size={16} /> : <Sparkles size={16} />}
-            生成开局方案
-          </button>
-        </form>
-        <div className="opening-director-examples" aria-label="示例偏好">
-          {["新手局，别太长", "大V主持，压迫感强一点", "血腥一点，但不要恶心"].map((example) => (
-            <button type="button" key={example} onClick={() => setDirectorPrompt(example)}>{example}</button>
-          ))}
-        </div>
-        {directorError && <p className="opening-director-error">{directorError}</p>}
-        {directorPlans.length > 0 && (
-          <div className="opening-director-plans">
-            {directorPlans.map((plan) => (
-              <article className="opening-plan-card" key={plan.id}>
-                <span>{plan.title}</span>
-                <h3>{plan.puzzle.title}</h3>
-                <p>{plan.reason}</p>
-                <div className="opening-plan-chips">
-                  {plan.chips.map((chip) => <small key={chip}>{chip}</small>)}
+          <span className="opening-agent-trigger-avatar" aria-hidden="true">
+            <img src="/assets/host-xiaowai.png" alt="" />
+          </span>
+          <span><Bot size={14} /> 帮我找一题</span>
+        </button>
+        <section className="opening-agent-drawer" aria-hidden={!isOpeningAgentOpen} inert={!isOpeningAgentOpen ? true : undefined}>
+          <div className="opening-director-panel" aria-labelledby="opening-director-title">
+            <div className="opening-director-head">
+              <div>
+                <span className="panel-kicker"><Bot size={14} /> 开局 Agent</span>
+                <h2 id="opening-director-title">说出想玩的感觉，我会先规划，再等你确认开局。</h2>
+              </div>
+              <button className="icon-button" type="button" aria-label="关闭开局 Agent" onClick={() => setIsOpeningAgentOpen(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="agent-chat-card" aria-label="开局 Agent 对话">
+              <div className="agent-chat-avatar" aria-hidden="true">
+                <img src="/assets/host-xiaowai.png" alt="" />
+              </div>
+              <div className="agent-chat-bubble">
+                <span>小歪 · 开局助手</span>
+                <p>告诉我你想玩的题材、强度或主持风格。我会先理解偏好，再给出可确认的开局方案。</p>
+              </div>
+            </div>
+            <form
+              className="opening-director-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void generateOpeningPlans();
+              }}
+            >
+              <input
+                value={directorPrompt}
+                onChange={(event) => setDirectorPrompt(event.target.value)}
+                maxLength={300}
+                placeholder="比如：涉及父母，反转强一点，不要太血腥"
+              />
+              <button className="primary-button" type="submit" disabled={isDirectorLoading}>
+                {isDirectorLoading ? <Loader2 size={16} /> : <Sparkles size={16} />}
+                生成开局方案
+              </button>
+            </form>
+            <div className="opening-director-examples" aria-label="示例偏好">
+              {["新手局，别太长", "大V主持，压迫感强一点", "血腥一点，但不要恶心"].map((example) => (
+                <button type="button" key={example} onClick={() => setDirectorPrompt(example)}>{example}</button>
+              ))}
+            </div>
+            <details className="agent-workflow" aria-label="开局 Agent 工作记录">
+              <summary>
+                <span>工作记录</span>
+                <small>{isDirectorLoading ? "正在匹配题库" : directorPlans.length > 0 ? "方案已生成，等待确认" : "待命，输入需求后开始"}</small>
+              </summary>
+              <ol className="agent-trace-list">
+                {agentTrace.map((item) => (
+                  <li className={`agent-trace-item agent-trace-${item.status}`} key={item.id}>
+                    <span className="agent-trace-dot" aria-hidden="true" />
+                    <div>
+                      <strong>{item.label}</strong>
+                      <code>{item.toolName}</code>
+                      <p>{item.summary}</p>
+                      <small>{item.detail}</small>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </details>
+            {directorError && <p className="opening-director-error">{directorError}</p>}
+            {directorDecision && (
+              <div className="opening-decision-card">
+                <span>需要你决定</span>
+                <h3>{directorDecision.title}</h3>
+                <p>{directorDecision.reason}</p>
+                <div className="opening-decision-options">
+                  {directorDecision.options.map((option) => (
+                    <button className="ghost-button" type="button" key={option.id} onClick={() => void generateOpeningPlans(option.id)} disabled={isDirectorLoading}>
+                      <strong>{option.title}</strong>
+                      <small>{option.description}</small>
+                    </button>
+                  ))}
                 </div>
-                <dl>
-                  <div><dt>主持</dt><dd>{plan.hostPersonaId === "dav" ? "大V" : plan.hostPersonaId === "guigui" ? "龟龟" : "小歪"}</dd></div>
-                  <div><dt>问数</dt><dd>{plan.questionLimit === 0 ? "不限" : `${plan.questionLimit} 问`}</dd></div>
-                  <div><dt>强度</dt><dd>{plan.contentIntensity}</dd></div>
-                </dl>
-                <button className="primary-button" type="button" onClick={() => onStartDirectedPlan?.(plan)}>
-                  <Play size={16} /> 开这局
-                </button>
-              </article>
-            ))}
+              </div>
+            )}
+            {directorPlans.length > 0 && (
+              <div className="opening-director-plans">
+                {directorPlans.map((plan) => (
+                  <article className="opening-plan-card" key={plan.id}>
+                    <span>{plan.title}</span>
+                    <h3>{plan.puzzle.title}</h3>
+                    <p>{plan.reason}</p>
+                    <small className="opening-plan-match">{plan.matchSummary}</small>
+                    <div className="opening-plan-chips">
+                      {plan.chips.map((chip) => <small key={chip}>{chip}</small>)}
+                    </div>
+                    <dl>
+                      <div><dt>主持</dt><dd>{plan.hostPersonaId === "dav" ? "大V" : plan.hostPersonaId === "guigui" ? "龟龟" : "小歪"}</dd></div>
+                      <div><dt>问数</dt><dd>{plan.questionLimit === 0 ? "不限" : `${plan.questionLimit} 问`}</dd></div>
+                      <div><dt>强度</dt><dd>{plan.contentIntensity}</dd></div>
+                    </dl>
+                    <button className="primary-button" type="button" onClick={() => onStartDirectedPlan?.(plan)}>
+                      <Play size={16} /> 确认开局
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </section>
+        </section>
+      </aside>
 
       <section className="toolbar">
         <label className="search-box">

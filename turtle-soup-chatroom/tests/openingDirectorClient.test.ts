@@ -21,4 +21,24 @@ describe("opening director client", () => {
     });
     expect(result.plans).toEqual([]);
   });
+
+  it("posts selected decision options", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        intent: { rawText: "刺激", themes: [], moods: ["反转"], avoidThemes: [], confidence: 1, source: "fallback" },
+        plans: [],
+        agentTrace: [],
+        fallbackUsed: false
+      })
+    } as unknown as Response);
+
+    await fetchOpeningDirectorPlans({ prompt: "刺激", limit: 2, decisionId: "more_reasoning" }, fetcher);
+
+    expect(fetcher).toHaveBeenCalledWith("/api/agent/opening-plans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: "刺激", limit: 2, decisionId: "more_reasoning" })
+    });
+  });
 });

@@ -270,6 +270,8 @@ export async function analyzePuzzleTagsWithAi(input: AnalyzePuzzleTagsInput) {
       choices?: Array<{ message?: { content?: string } }>;
     };
     return parsePuzzleTagResponse(payload.choices?.[0]?.message?.content || "", fallbackInput);
+  } catch {
+    return normalizePuzzleTags(fallbackInput);
   } finally {
     clearTimeout(timeout);
   }

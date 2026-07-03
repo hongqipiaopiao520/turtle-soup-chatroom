@@ -1,5 +1,6 @@
-import { ArrowLeft, Award, BadgeCheck, ClipboardList, Clock, Compass, KeyRound, Lightbulb, Link, Sparkles, Target, X } from "lucide-react";
+import { ArrowLeft, Award, BadgeCheck, ClipboardList, Bot, Clock, Compass, KeyRound, Lightbulb, Link, Sparkles, Target, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createRoomCompanionBrief } from "../shared/roomCompanionAgent";
 import type { HostPersonaId, PublicHostAnswer, PublicRoomState } from "../shared/types";
 import { HostPanel } from "./HostPanel";
 import { SidePanel } from "./SidePanel";
@@ -203,6 +204,7 @@ export function RoomPage({
           isChatPending={isChatPending}
         />
       </section>
+      <CompanionAgentFloat room={room} />
       {settlementOpen && room.answerUnlocked && (
         <section className="settlement-backdrop" role="presentation">
           <div className="settlement-dialog" role="dialog" aria-modal="true" aria-labelledby="settlement-title">
@@ -306,5 +308,41 @@ export function RoomPage({
         </section>
       )}
     </main>
+  );
+}
+
+function CompanionAgentFloat({ room }: { room: PublicRoomState }) {
+  const companionBrief = createRoomCompanionBrief(room);
+
+  return (
+    <aside className="companion-agent-float" aria-label="陪玩 Agent">
+      <button className="companion-agent-trigger" type="button" aria-label="查看陪玩 Agent 观察">
+        <img src="/assets/host-xiaowai.png" alt="" aria-hidden="true" />
+        <span><Bot size={13} /> 陪玩 Agent</span>
+      </button>
+      <section className="companion-agent-popover">
+        <p className="companion-agent-summary">{companionBrief.summary}</p>
+        <dl className="companion-agent-brief">
+          <div>
+            <dt>已确认</dt>
+            <dd>{companionBrief.confirmed[0] ?? "等待第一条有效问答"}</dd>
+          </div>
+          <div>
+            <dt>待确认</dt>
+            <dd>{companionBrief.toVerify[0] ?? "先追问异常触发点"}</dd>
+          </div>
+          {companionBrief.offTrack[0] && (
+            <div>
+              <dt>少走弯路</dt>
+              <dd>{companionBrief.offTrack[0]}</dd>
+            </div>
+          )}
+        </dl>
+        <div className="companion-next-question">
+          <span>建议下一问</span>
+          <strong>{companionBrief.nextQuestion}</strong>
+        </div>
+      </section>
+    </aside>
   );
 }

@@ -3,6 +3,7 @@ import {
   deleteAdminPuzzle,
   deleteAdminPuzzleBatch,
   fetchAdminPuzzles,
+  generateAdminPuzzleAiProfiles,
   importAdminPuzzleText,
   parseAdminPuzzleImages,
   publishAdminPuzzleBatch,
@@ -172,6 +173,21 @@ describe("admin puzzle client", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: ["p1"] })
+    });
+  });
+
+  it("requests AI profile generation for selected puzzles", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ updated: [], skipped: ["p1"], failed: [] }));
+
+    await generateAdminPuzzleAiProfiles(
+      { ids: ["p1"], overwrite: true },
+      { token: "secret", fetcher: fetcher as unknown as typeof fetch }
+    );
+
+    expect(fetcher).toHaveBeenCalledWith("/api/admin/puzzles/generate-ai-profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer secret" },
+      body: JSON.stringify({ ids: ["p1"], overwrite: true })
     });
   });
 

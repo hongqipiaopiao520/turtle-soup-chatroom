@@ -104,13 +104,47 @@ describe("HomePage", () => {
     expect(markup).not.toContain("CASE-001");
   });
 
-  it("renders a compact AI opening director entry", () => {
+  it("renders opening agent as a floating drawer instead of a hero panel", () => {
     const markup = renderToStaticMarkup(
       <HomePage puzzles={publicSeedPuzzles} onOpenPuzzle={() => undefined} onRandomPuzzle={() => undefined} />
     );
 
-    expect(markup).toContain("AI 开局导演");
+    expect(markup).toContain("开局 Agent");
+    expect(markup).toContain("opening-agent-float");
+    expect(markup).toContain("opening-agent-trigger");
+    expect(markup).toContain("帮我找一题");
+    expect(markup).toContain("opening-agent-drawer");
+    expect(markup).toContain("agent-chat-card");
+    expect(markup).toContain("工作记录");
+    expect(markup).toContain("<details");
+    expect(markup).toContain("<summary");
+    expect(markup).toContain("理解偏好");
+    expect(markup).toContain("搜索题库");
+    expect(markup).toContain("匹配画像");
+    expect(markup).toContain("生成方案");
+    expect(markup).toContain("等待确认");
+    expect(markup).toContain("parse_intent");
+    expect(markup).toContain("search_puzzles");
+    expect(markup).toContain("rank_profiles");
+    expect(markup).toContain("draft_plans");
+    expect(markup).toContain("request_confirm");
     expect(markup).toContain("涉及父母，反转强一点，不要太血腥");
     expect(markup).toContain("生成开局方案");
+    expect(markup).not.toContain("Agent 工作流");
+  });
+
+  it("restores the host persona showcase beside the case desk in the first screen", () => {
+    const markup = renderToStaticMarkup(
+      <HomePage puzzles={publicSeedPuzzles} onOpenPuzzle={() => undefined} onRandomPuzzle={() => undefined} />
+    );
+    const heroStart = markup.indexOf('class="home-hero"');
+    const heroEnd = markup.indexOf('class="opening-agent-float"');
+    const heroMarkup = markup.slice(heroStart, heroEnd);
+
+    expect(heroMarkup).toContain("case-hero-panel");
+    expect(heroMarkup).toContain("host-persona-showcase");
+    expect(heroMarkup).not.toContain("opening-director-panel");
+    expect(heroMarkup.indexOf("case-hero-panel")).toBeLessThan(heroMarkup.indexOf("host-persona-showcase"));
+    expect(markup.indexOf("opening-agent-float")).toBeGreaterThan(markup.indexOf("home-hero"));
   });
 });

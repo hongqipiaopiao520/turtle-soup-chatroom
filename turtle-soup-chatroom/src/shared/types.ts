@@ -104,12 +104,27 @@ export interface OpeningDirectorIntent {
 
 export type OpeningDirectorSource = "profile-score" | "ai-intent-profile-score" | "fallback";
 
+export type OpeningDirectorTraceStatus = "done" | "active" | "waiting" | "fallback";
+
+export interface OpeningDirectorTraceItem {
+  id: "parse_intent" | "search_puzzles" | "rank_profiles" | "draft_plans" | "request_confirm";
+  toolName: "parse_intent" | "search_puzzles" | "rank_profiles" | "draft_plans" | "request_confirm";
+  label: string;
+  status: OpeningDirectorTraceStatus;
+  summary: string;
+  detail: string;
+  inputSummary: string;
+  outputSummary: string;
+}
+
 export interface OpeningDirectorPlan {
   id: string;
   puzzle: PublicPuzzle;
   title: string;
   reason: string;
   matchSummary: string;
+  retrievalMatches: string[];
+  retrievalScore: number;
   chips: string[];
   contentIntensity: string;
   hostPersonaId: HostPersonaId;
@@ -121,11 +136,28 @@ export interface OpeningDirectorPlan {
 export interface OpeningDirectorRequest {
   prompt: string;
   limit?: number;
+  decisionId?: string;
+}
+
+export interface OpeningDirectorDecisionOption {
+  id: "more_intense" | "more_reasoning";
+  title: string;
+  description: string;
+  promptPatch: string;
+}
+
+export interface OpeningDirectorDecision {
+  id: "clarify_intensity";
+  title: string;
+  reason: string;
+  options: OpeningDirectorDecisionOption[];
 }
 
 export interface OpeningDirectorResponse {
   intent: OpeningDirectorIntent;
   plans: OpeningDirectorPlan[];
+  agentTrace: OpeningDirectorTraceItem[];
+  decision?: OpeningDirectorDecision;
   fallbackUsed: boolean;
 }
 
