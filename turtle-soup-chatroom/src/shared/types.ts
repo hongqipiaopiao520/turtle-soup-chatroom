@@ -161,6 +161,51 @@ export interface OpeningDirectorResponse {
   fallbackUsed: boolean;
 }
 
+export type RoomCompanionAssistAction = "next_question" | "summarize_clues" | "check_guess";
+
+export type RoomCompanionAssistSource = "ai" | "fallback";
+
+export interface RoomCompanionSnapshotAnswer {
+  question: string;
+  answerType: HostAnswerType;
+  answer: string;
+  progressDelta: number;
+}
+
+export interface RoomCompanionSnapshot {
+  puzzle: {
+    title: string;
+    surface: string;
+    difficulty: Difficulty;
+    tags: string[];
+  };
+  stageLabel: string;
+  progressNote: string;
+  summary: string;
+  confirmed: string[];
+  toVerify: string[];
+  offTrack: string[];
+  nextQuestion: string;
+  recentAnswers: RoomCompanionSnapshotAnswer[];
+}
+
+export interface RoomCompanionAssistRequest {
+  action: RoomCompanionAssistAction;
+  snapshot: RoomCompanionSnapshot;
+  draftGuess?: string;
+}
+
+export interface RoomCompanionAssistResponse {
+  action: RoomCompanionAssistAction;
+  title: string;
+  body: string;
+  suggestion: string;
+  chips: string[];
+  source: RoomCompanionAssistSource;
+  model?: string;
+  cached: boolean;
+}
+
 export type PuzzleSort = "hot" | "latest" | "rating";
 
 export interface PuzzleFilters {

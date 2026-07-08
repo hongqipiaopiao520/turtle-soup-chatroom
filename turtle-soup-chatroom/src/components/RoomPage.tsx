@@ -1,7 +1,8 @@
-import { ArrowLeft, Award, BadgeCheck, ClipboardList, Bot, Clock, Compass, KeyRound, Lightbulb, Link, Sparkles, Target, X } from "lucide-react";
+import { ArrowLeft, Award, BadgeCheck, ClipboardList, Clock, Compass, KeyRound, Lightbulb, Link, Sparkles, Target, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createRoomCompanionSnapshot, fetchRoomCompanionAssist } from "../client/roomCompanion";
 import { createRoomCompanionBrief } from "../shared/roomCompanionAgent";
-import type { HostPersonaId, PublicHostAnswer, PublicRoomState } from "../shared/types";
+import type { HostPersonaId, PublicHostAnswer, PublicRoomState, RoomCompanionAssistAction, RoomCompanionAssistResponse } from "../shared/types";
 import { HostPanel } from "./HostPanel";
 import { SidePanel } from "./SidePanel";
 
@@ -16,6 +17,12 @@ const hostPersonaNames: Record<HostPersonaId, string> = {
   dav: "大V",
   guigui: "龟龟"
 };
+
+const companionActions: Array<{ action: RoomCompanionAssistAction; label: string }> = [
+  { action: "next_question", label: "想下一问" },
+  { action: "summarize_clues", label: "整理线索" },
+  { action: "check_guess", label: "检查推理" }
+];
 
 function formatHostAnswer(answer: PublicHostAnswer): string {
   if (!answer.styleText) return answer.answer;
@@ -313,14 +320,72 @@ export function RoomPage({
 
 function CompanionAgentFloat({ room }: { room: PublicRoomState }) {
   const companionBrief = createRoomCompanionBrief(room);
+  const [activeAction, setActiveAction] = useState<RoomCompanionAssistAction>("next_question");
+  const [draftGuess, setDraftGuess] = useState("");
+  const [assistResult, setAssistResult] = useState<RoomCompanionAssistResponse | null>(null);
+  const [assistError, setAssistError] = useState("");
+  const [isAssistLoading, setIsAssistLoading] = useState(false);
+
+  useEffect(() => {
+    setAssistResult(null);
+    setAssistError("");
+  }, [room.id, room.hostLog.length, room.progress]);
+
+  async function requestCompanionAssist(action: RoomCompanionAssistAction) {
+    setActiveAction(action);
+    setAssistError("");
+    if (action === "check_guess" && !draftGuess.trim()) {
+      setAssistResult({
+        action,
+        title: "先写推理",
+        body: "写下你的完整推理后，我再帮你检查是否缺少关键公开线索。",
+        suggestion: "至少写出“谁、为什么、怎么导致题面结果”。",
+        chips: ["0 token", companionBrief.stageLabel],
+        source: "fallback",
+        cached: false
+      });
+      return;
+    }
+    setIsAssistLoading(true);
+    try {
+      const result = await fetchRoomCompanionAssist({
+        action,
+        snapshot: createRoomCompanionSnapshot(room, companionBrief),
+        draftGuess: action === "check_guess" ? draftGuess : undefined
+      });
+      setAssistResult(result);
+    } catch (error) {
+      setAssistError(error instanceof Error ? error.message : "陪玩 Agent 暂时不可用");
+    } finally {
+      setIsAssistLoading(false);
+    }
+  }
 
   return (
     <aside className="companion-agent-float" aria-label="陪玩 Agent">
       <button className="companion-agent-trigger" type="button" aria-label="查看陪玩 Agent 观察">
-        <img src="/assets/host-xiaowai.png" alt="" aria-hidden="true" />
-        <span><Bot size={13} /> 陪玩 Agent</span>
+        <span className="companion-agent-assistant" aria-hidden="true">
+          <img src="/assets/assistant-finder.png" alt="" />
+        </span>
+        <span className="companion-agent-trigger-copy">
+          <small>陪玩助理</small>
+          <strong>{companionBrief.stageLabel}</strong>
+          <span className="companion-agent-status">
+            <span aria-hidden="true" />
+            {companionBrief.progressNote}
+          </span>
+        </span>
       </button>
       <section className="companion-agent-popover">
+        <div className="companion-agent-head">
+          <span className="companion-agent-mini" aria-hidden="true">
+            <img src="/assets/assistant-finder.png" alt="" />
+          </span>
+          <div>
+            <span>小档 · 陪玩观察</span>
+            <strong>{companionBrief.pulse}</strong>
+          </div>
+        </div>
         <p className="companion-agent-summary">{companionBrief.summary}</p>
         <dl className="companion-agent-brief">
           <div>
@@ -342,6 +407,42 @@ function CompanionAgentFloat({ room }: { room: PublicRoomState }) {
           <span>建议下一问</span>
           <strong>{companionBrief.nextQuestion}</strong>
         </div>
+        <div className="companion-agent-tools" aria-label="陪玩 Agent 技能">
+          {companionActions.map((item) => (
+            <button
+              className={activeAction === item.action ? "companion-agent-tool companion-agent-tool-active" : "companion-agent-tool"}
+              type="button"
+              aria-pressed={activeAction === item.action}
+              disabled={isAssistLoading}
+              key={item.action}
+              onClick={() => void requestCompanionAssist(item.action)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <textarea
+          className="companion-guess-input"
+          value={draftGuess}
+          maxLength={300}
+          placeholder="写下你的推理，再点“检查推理”"
+          onChange={(event) => setDraftGuess(event.target.value)}
+        />
+        {assistError && <p className="companion-agent-error">{assistError}</p>}
+        {assistResult && (
+          <article className="companion-agent-result">
+            <div className="companion-agent-result-head">
+              <span>{assistResult.source === "ai" ? "AI 建议" : "规则建议"}{assistResult.cached ? " · 已缓存" : ""}</span>
+              <strong>{assistResult.title}</strong>
+            </div>
+            <p>{assistResult.body}</p>
+            <strong>{assistResult.suggestion}</strong>
+            <div className="companion-agent-result-chips">
+              {assistResult.chips.map((chip) => <span key={chip}>{chip}</span>)}
+            </div>
+          </article>
+        )}
+        {isAssistLoading && <p className="companion-agent-loading"><Sparkles size={12} /> 小档正在压缩公开线索…</p>}
       </section>
     </aside>
   );

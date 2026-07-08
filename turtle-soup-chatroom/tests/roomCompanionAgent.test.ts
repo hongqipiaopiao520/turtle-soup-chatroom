@@ -88,6 +88,16 @@ describe("room companion agent", () => {
     expect(brief.toVerify).toContain("报警和水本身有关吗？");
     expect(brief.offTrack).toContain("他在国外吗？");
     expect(brief.nextQuestion).toContain("水");
+    expect(brief.stageLabel).toBe("建立边界");
+    expect(brief.progressNote).toContain("28%");
+    expect(brief.pulse).toContain("偏离主线");
     expect(JSON.stringify(brief)).not.toContain("私有汤底");
+  });
+
+  it("changes stage copy with room progress", () => {
+    expect(createRoomCompanionBrief({ ...makeRoom(), hostLog: [], questionsUsed: 0, progress: 0 }).stageLabel).toBe("破冰建模");
+    expect(createRoomCompanionBrief({ ...makeRoom(), questionsUsed: 8, progress: 72 }).stageLabel).toBe("收束推理");
+    expect(createRoomCompanionBrief({ ...makeRoom(), questionsUsed: 16, progress: 92 }).stageLabel).toBe("临门一脚");
+    expect(createRoomCompanionBrief({ ...makeRoom(), answerUnlocked: true, status: "solved", progress: 100 }).stageLabel).toBe("复盘整理");
   });
 });

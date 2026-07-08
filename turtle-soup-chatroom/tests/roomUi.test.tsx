@@ -450,9 +450,12 @@ describe("room UI settlement", () => {
   it("renders a compact floating companion agent from public host history", () => {
     const room = {
       ...makeSolvedRoom(),
+      status: "playing" as const,
       answerUnlocked: false,
       truthRevealed: false,
       truth: "隐藏汤底不该出现在陪玩 Agent。",
+      questionsUsed: 4,
+      progress: 36,
       hostLog: [
         ...makeSolvedRoom().hostLog,
         {
@@ -500,8 +503,20 @@ describe("room UI settlement", () => {
     expect(markup).toContain("companion-agent-trigger");
     expect(markup).toContain("companion-agent-popover");
     expect(markup).toContain("陪玩 Agent");
+    expect(markup).toContain("/assets/assistant-finder.png");
+    expect(markup).toContain("陪玩助理");
+    expect(markup).toContain("追关键变量");
+    expect(markup).toContain("36% · 已问 4/20 问");
+    expect(markup).toContain("小档 · 陪玩观察");
+    expect(markup).toContain("刚才有突破，完成度 +12%。");
     expect(markup).toContain("建议下一问");
     expect(markup).toContain("水的来源或状态发生过变化吗？");
+    expect(markup).toContain("companion-agent-tools");
+    expect(markup).toContain("想下一问");
+    expect(markup).toContain("整理线索");
+    expect(markup).toContain("检查推理");
+    expect(markup).toContain("companion-guess-input");
+    expect(markup).toContain("写下你的推理，再点“检查推理”");
     expect(markup).not.toContain("隐藏汤底");
   });
 

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createAdminPuzzleRouter } from "./adminPuzzleRoutes";
 import { createAiHostHarnessRouter } from "./aiHostHarnessRoutes";
 import { createOpeningDirectorPlans } from "./openingDirector";
+import { createRoomCompanionAssist } from "./roomCompanionAssistant";
 import { getRoom } from "./roomStore";
 import type { PuzzleRepository } from "./storage/puzzleRepository";
 import type { RoomRepository } from "./storage/roomRepository";
@@ -14,6 +15,31 @@ const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || "24mb";
 const OpeningPlansSchema = z.object({
   prompt: z.string().trim().min(1).max(300),
   limit: z.number().int().min(1).max(3).optional()
+});
+const RoomCompanionAssistSchema = z.object({
+  action: z.enum(["next_question", "summarize_clues", "check_guess"]),
+  draftGuess: z.string().max(400).optional(),
+  snapshot: z.object({
+    puzzle: z.object({
+      title: z.string().max(80),
+      surface: z.string().max(240),
+      difficulty: z.enum(["easy", "medium", "hard"]),
+      tags: z.array(z.string().max(20)).max(8)
+    }),
+    stageLabel: z.string().max(32),
+    progressNote: z.string().max(48),
+    summary: z.string().max(160),
+    confirmed: z.array(z.string().max(100)).max(4),
+    toVerify: z.array(z.string().max(100)).max(4),
+    offTrack: z.array(z.string().max(100)).max(3),
+    nextQuestion: z.string().max(120),
+    recentAnswers: z.array(z.object({
+      question: z.string().max(120),
+      answerType: z.enum(["yes", "no", "irrelevant", "partial", "invalid", "solved", "unsolved"]),
+      answer: z.string().max(100),
+      progressDelta: z.number()
+    })).max(8)
+  })
 });
 
 export function getAllowedOrigins() {
@@ -89,6 +115,15 @@ export function createApp(puzzleRepository: PuzzleRepository, roomRepository?: R
       }));
     } catch (error) {
       response.status(400).json({ message: error instanceof Error ? error.message : "开局导演生成失败" });
+    }
+  });
+
+  app.post("/api/agent/room-companion", async (request, response) => {
+    try {
+      const parsed = RoomCompanionAssistSchema.parse(request.body);
+      response.json(await createRoomCompanionAssist(parsed));
+    } catch (error) {
+      response.status(400).json({ message: error instanceof Error ? error.message : "陪玩 Agent 生成失败" });
     }
   });
 
